@@ -13,6 +13,7 @@ public sealed class TrayService : IDisposable
     private readonly SystemMetricsMonitor _metricsMonitor = new();
     private readonly System.Windows.Threading.Dispatcher _dispatcher;
     private string? _themeMode;
+    private int _themeRefreshVersion;
     private bool _isPaused;
     private bool _isDisposed;
 
@@ -32,7 +33,7 @@ public sealed class TrayService : IDisposable
         _notifyIcon.ContextMenuStrip.Items.Add("退出", null, (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty));
         _notifyIcon.MouseClick += OnMouseClick;
 
-        _animator = new TrayReminderAnimator(_notifyIcon, settings.ReminderCharacter, ThemeService.IsDarkMode(_themeMode), assetDirectory);
+        _animator = new TrayReminderAnimator(_notifyIcon, settings.ReminderCharacter, ThemeService.IsTrayDarkMode(_themeMode), assetDirectory);
         ApplyTheme();
         _metricsMonitor.CpuUsageUpdated += OnCpuUsageUpdated;
         SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
@@ -72,6 +73,7 @@ public sealed class TrayService : IDisposable
         }
 
         var useDark = ThemeService.IsDarkMode(_themeMode);
+        var useDarkTrayIcon = ThemeService.IsTrayDarkMode(_themeMode);
         var background = useDark ? Drawing.Color.FromArgb(27, 30, 24) : Drawing.Color.FromArgb(255, 255, 255);
         var foreground = useDark ? Drawing.Color.FromArgb(245, 241, 232) : Drawing.Color.FromArgb(29, 27, 24);
         var selection = useDark ? Drawing.Color.FromArgb(36, 40, 31) : Drawing.Color.FromArgb(241, 237, 229);
@@ -87,7 +89,7 @@ public sealed class TrayService : IDisposable
             item.ForeColor = foreground;
         }
 
-        _animator.SetTheme(useDark);
+        _animator.SetTheme(useDarkTrayIcon);
     }
 
     public void UpdateSnapshot(UsageSnapshot snapshot)
@@ -124,6 +126,13 @@ public sealed class TrayService : IDisposable
             return;
         }
 
+        var refreshVersion = Interlocked.Increment(ref _themeRefreshVersion);
+        RefreshThemeOnDispatcher();
+        _ = RefreshThemeAfterSystemSettlesAsync(refreshVersion);
+    }
+
+    private void RefreshThemeOnDispatcher()
+    {
         _dispatcher.BeginInvoke(() =>
         {
             if (!_isDisposed)
@@ -131,6 +140,20 @@ public sealed class TrayService : IDisposable
                 ApplyTheme();
             }
         });
+    }
+
+    private async Task RefreshThemeAfterSystemSettlesAsync(int refreshVersion)
+    {
+        foreach (var delay in new[] { 100, 250, 500, 1000, 2000 })
+        {
+            await Task.Delay(delay);
+            if (_isDisposed || refreshVersion != Volatile.Read(ref _themeRefreshVersion))
+            {
+                return;
+            }
+
+            RefreshThemeOnDispatcher();
+        }
     }
 
     private static string FormatDuration(int totalSeconds)

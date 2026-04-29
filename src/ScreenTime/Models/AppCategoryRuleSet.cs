@@ -12,4 +12,5 @@ public sealed class AppCategoryRule
     public List<string> ProcessNames { get; set; } = [];
     public List<string> PathKeywords { get; set; } = [];
     public List<string> NameKeywords { get; set; } = [];
+    public List<string> WindowTitleKeywords { get; set; } = [];
 }

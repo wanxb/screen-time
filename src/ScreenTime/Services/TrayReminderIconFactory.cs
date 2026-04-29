@@ -7,6 +7,10 @@ namespace ScreenTime.Services;
 
 public static class TrayReminderIconFactory
 {
+    private static readonly object FrameCacheLock = new();
+    private static readonly Dictionary<string, Bitmap[]> BitmapFrameCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, Icon[]> IconFrameCache = new(StringComparer.OrdinalIgnoreCase);
+
     public static Icon[] CreateFrames(string reminderCharacter, CpuLoadLevel loadLevel, string? assetDirectory = null)
     {
         return CreateFrames(reminderCharacter, loadLevel, false, assetDirectory);
@@ -14,32 +18,140 @@ public static class TrayReminderIconFactory
 
     public static Icon[] CreateFrames(string reminderCharacter, CpuLoadLevel loadLevel, bool useDarkMode, string? assetDirectory = null)
     {
-        var assetFrames = TryLoadAssetFrames(reminderCharacter, loadLevel, useDarkMode, assetDirectory);
-        return assetFrames.Length > 0
-            ? assetFrames
-            : CreateGeneratedFrames(reminderCharacter, loadLevel, useDarkMode);
+        var cacheKey = BuildCacheKey(reminderCharacter, loadLevel, useDarkMode, 32, assetDirectory);
+        lock (FrameCacheLock)
+        {
+            if (IconFrameCache.TryGetValue(cacheKey, out var cachedFrames))
+            {
+                return CloneIcons(cachedFrames);
+            }
+        }
+
+        var bitmaps = CreateBitmapFrames(reminderCharacter, loadLevel, useDarkMode, 32, assetDirectory);
+        try
+        {
+            var frames = bitmaps.Select(CreatePngIcon).ToArray();
+            lock (FrameCacheLock)
+            {
+                if (!IconFrameCache.ContainsKey(cacheKey))
+                {
+                    IconFrameCache[cacheKey] = CloneIcons(frames);
+                }
+            }
+
+            return frames;
+        }
+        finally
+        {
+            foreach (var bitmap in bitmaps)
+            {
+                bitmap.Dispose();
+            }
+        }
     }
 
-    private static Icon[] CreateGeneratedFrames(string reminderCharacter, CpuLoadLevel loadLevel, bool useDarkMode)
+    public static Bitmap[] CreateBitmapFrames(
+        string reminderCharacter,
+        CpuLoadLevel loadLevel,
+        bool useDarkMode,
+        int frameSize,
+        string? assetDirectory = null)
+    {
+        var cacheKey = BuildCacheKey(reminderCharacter, loadLevel, useDarkMode, frameSize, assetDirectory);
+        lock (FrameCacheLock)
+        {
+            if (BitmapFrameCache.TryGetValue(cacheKey, out var cachedFrames))
+            {
+                return CloneFrames(cachedFrames);
+            }
+        }
+
+        var assetFrames = TryLoadAssetBitmapFrames(reminderCharacter, loadLevel, useDarkMode, frameSize, assetDirectory);
+        var frames = assetFrames.Length > 0
+            ? assetFrames
+            : CreateGeneratedBitmapFrames(reminderCharacter, loadLevel, useDarkMode, frameSize);
+
+        lock (FrameCacheLock)
+        {
+            if (!BitmapFrameCache.ContainsKey(cacheKey))
+            {
+                BitmapFrameCache[cacheKey] = CloneFrames(frames);
+            }
+        }
+
+        return frames;
+    }
+
+    private static Icon[] CloneIcons(IEnumerable<Icon> frames)
+    {
+        return frames.Select(frame => (Icon)frame.Clone()).ToArray();
+    }
+
+    private static Bitmap[] CloneFrames(IEnumerable<Bitmap> frames)
+    {
+        return frames.Select(frame => (Bitmap)frame.Clone()).ToArray();
+    }
+
+    private static string BuildCacheKey(
+        string reminderCharacter,
+        CpuLoadLevel loadLevel,
+        bool useDarkMode,
+        int frameSize,
+        string? assetDirectory)
+    {
+        var explicitSignature = BuildDirectorySignature(assetDirectory);
+        var bundledDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "TrayRunners", reminderCharacter);
+        var bundledSignature = BuildDirectorySignature(bundledDirectory);
+        return string.Join(
+            "|",
+            reminderCharacter.ToLowerInvariant(),
+            loadLevel,
+            useDarkMode,
+            frameSize,
+            explicitSignature,
+            bundledSignature);
+    }
+
+    private static string BuildDirectorySignature(string? directory)
+    {
+        if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+        {
+            return string.Empty;
+        }
+
+        return string.Join(
+            ";",
+            Directory.GetFiles(directory, "*.*")
+                .Where(path => Path.GetExtension(path).Equals(".png", StringComparison.OrdinalIgnoreCase)
+                    || Path.GetExtension(path).Equals(".ico", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                .Select(path =>
+                {
+                    var info = new FileInfo(path);
+                    return $"{info.FullName}:{info.Length}:{info.LastWriteTimeUtc.Ticks}";
+                }));
+    }
+
+    private static Bitmap[] CreateGeneratedBitmapFrames(string reminderCharacter, CpuLoadLevel loadLevel, bool useDarkMode, int frameSize)
     {
         return Enumerable.Range(0, 5)
-            .Select(frame => CreateFrame(reminderCharacter, loadLevel, useDarkMode, frame))
+            .Select(frame => CreateGeneratedBitmapFrame(reminderCharacter, loadLevel, useDarkMode, frame, frameSize))
             .ToArray();
     }
 
-    private static Icon[] TryLoadAssetFrames(string reminderCharacter, CpuLoadLevel loadLevel, bool useDarkMode, string? assetDirectory)
+    private static Bitmap[] TryLoadAssetBitmapFrames(string reminderCharacter, CpuLoadLevel loadLevel, bool useDarkMode, int frameSize, string? assetDirectory)
     {
-        var explicitFrames = TryLoadAssetFramesFromDirectory(reminderCharacter, loadLevel, useDarkMode, assetDirectory);
+        var explicitFrames = TryLoadAssetBitmapFramesFromDirectory(reminderCharacter, loadLevel, useDarkMode, frameSize, assetDirectory);
         if (explicitFrames.Length > 0)
         {
             return explicitFrames;
         }
 
         var bundledDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "TrayRunners", reminderCharacter);
-        return TryLoadAssetFramesFromDirectory(reminderCharacter, loadLevel, useDarkMode, bundledDirectory);
+        return TryLoadAssetBitmapFramesFromDirectory(reminderCharacter, loadLevel, useDarkMode, frameSize, bundledDirectory);
     }
 
-    private static Icon[] TryLoadAssetFramesFromDirectory(string reminderCharacter, CpuLoadLevel loadLevel, bool useDarkMode, string? assetDirectory)
+    private static Bitmap[] TryLoadAssetBitmapFramesFromDirectory(string reminderCharacter, CpuLoadLevel loadLevel, bool useDarkMode, int frameSize, string? assetDirectory)
     {
         if (string.IsNullOrWhiteSpace(assetDirectory) || !Directory.Exists(assetDirectory))
         {
@@ -67,7 +179,7 @@ public static class TrayReminderIconFactory
 
             try
             {
-                return files.Select(path => CreateIconFromAsset(path, useDarkMode)).ToArray();
+                return files.Select(path => CreateBitmapFromAsset(path, useDarkMode, frameSize)).ToArray();
             }
             catch
             {
@@ -79,46 +191,118 @@ public static class TrayReminderIconFactory
         return [];
     }
 
-    private static Icon CreateIconFromAsset(string path, bool useDarkMode)
+    private static Bitmap CreateBitmapFromAsset(string path, bool useDarkMode, int frameSize)
     {
         if (Path.GetExtension(path).Equals(".ico", StringComparison.OrdinalIgnoreCase))
         {
-            return new Icon(path);
+            using var icon = new Icon(path);
+            using var iconBitmap = icon.ToBitmap();
+            return NormalizeAssetBitmap(iconBitmap, useDarkMode, frameSize);
         }
 
         using var source = new Bitmap(path);
-        if (!useDarkMode)
-        {
-            return CreatePngIcon(source);
-        }
-
-        using var recolored = Recolor(source, Color.White);
-        return CreatePngIcon(recolored);
+        return NormalizeAssetBitmap(source, useDarkMode, frameSize);
     }
 
-    private static Bitmap Recolor(Bitmap source, Color color)
+    private static Bitmap NormalizeAssetBitmap(Bitmap source, bool useDarkMode, int frameSize)
     {
-        var bitmap = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
-        using (var graphics = Graphics.FromImage(bitmap))
+        var removeLightBackground = HasLightOpaqueCorner(source);
+        var tint = useDarkMode ? Color.White : (Color?)null;
+        var bounds = FindVisibleBounds(source, removeLightBackground);
+        if (bounds.Width <= 0 || bounds.Height <= 0)
         {
-            graphics.DrawImage(source, new Rectangle(0, 0, source.Width, source.Height));
+            bounds = new Rectangle(0, 0, source.Width, source.Height);
         }
 
-        for (var y = 0; y < bitmap.Height; y++)
+        using var cleaned = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
+        for (var y = 0; y < source.Height; y++)
         {
-            for (var x = 0; x < bitmap.Width; x++)
+            for (var x = 0; x < source.Width; x++)
             {
-                var pixel = bitmap.GetPixel(x, y);
-                if (pixel.A == 0)
+                var pixel = source.GetPixel(x, y);
+                if (IsBackgroundPixel(pixel, removeLightBackground))
                 {
                     continue;
                 }
 
-                bitmap.SetPixel(x, y, Color.FromArgb(pixel.A, color));
+                cleaned.SetPixel(x, y, tint.HasValue ? Color.FromArgb(pixel.A, tint.Value) : pixel);
             }
         }
 
-        return bitmap;
+        return RenderToFrame(cleaned, bounds, frameSize);
+    }
+
+    private static Bitmap RenderToFrame(Bitmap source, Rectangle sourceBounds, int frameSize)
+    {
+        var target = new Bitmap(frameSize, frameSize, PixelFormat.Format32bppArgb);
+        using var graphics = Graphics.FromImage(target);
+        graphics.Clear(Color.Transparent);
+        graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        graphics.InterpolationMode = frameSize > 48 ? InterpolationMode.HighQualityBicubic : InterpolationMode.NearestNeighbor;
+        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+        var padding = frameSize <= 32 ? 0 : Math.Max(1, frameSize / 24);
+        var maxWidth = frameSize - (padding * 2);
+        var maxHeight = frameSize - (padding * 2);
+        var scale = Math.Min(maxWidth / (double)sourceBounds.Width, maxHeight / (double)sourceBounds.Height);
+        var width = Math.Max(1, (int)Math.Round(sourceBounds.Width * scale));
+        var height = Math.Max(1, (int)Math.Round(sourceBounds.Height * scale));
+        var destination = new Rectangle((frameSize - width) / 2, (frameSize - height) / 2, width, height);
+        graphics.DrawImage(source, destination, sourceBounds, GraphicsUnit.Pixel);
+        return target;
+    }
+
+    private static Rectangle FindVisibleBounds(Bitmap source, bool removeLightBackground)
+    {
+        var left = source.Width;
+        var top = source.Height;
+        var right = -1;
+        var bottom = -1;
+
+        for (var y = 0; y < source.Height; y++)
+        {
+            for (var x = 0; x < source.Width; x++)
+            {
+                if (IsBackgroundPixel(source.GetPixel(x, y), removeLightBackground))
+                {
+                    continue;
+                }
+
+                left = Math.Min(left, x);
+                top = Math.Min(top, y);
+                right = Math.Max(right, x);
+                bottom = Math.Max(bottom, y);
+            }
+        }
+
+        return right < left || bottom < top
+            ? Rectangle.Empty
+            : Rectangle.FromLTRB(left, top, right + 1, bottom + 1);
+    }
+
+    private static bool HasLightOpaqueCorner(Bitmap source)
+    {
+        var corners = new[]
+        {
+            source.GetPixel(0, 0),
+            source.GetPixel(source.Width - 1, 0),
+            source.GetPixel(0, source.Height - 1),
+            source.GetPixel(source.Width - 1, source.Height - 1)
+        };
+
+        return corners.Count(pixel => pixel.A > 200 && IsLightNeutral(pixel)) >= 2;
+    }
+
+    private static bool IsBackgroundPixel(Color pixel, bool removeLightBackground)
+    {
+        return pixel.A < 16 || (removeLightBackground && IsLightNeutral(pixel));
+    }
+
+    private static bool IsLightNeutral(Color pixel)
+    {
+        var max = Math.Max(pixel.R, Math.Max(pixel.G, pixel.B));
+        var min = Math.Min(pixel.R, Math.Min(pixel.G, pixel.B));
+        return min >= 220 && max - min <= 24;
     }
 
     private static Icon CreatePngIcon(Bitmap bitmap)
@@ -153,9 +337,9 @@ public static class TrayReminderIconFactory
         return CreateFrames(reminderCharacter, loadLevel, false, null);
     }
 
-    private static Icon CreateFrame(string reminderCharacter, CpuLoadLevel loadLevel, bool useDarkMode, int frame)
+    private static Bitmap CreateGeneratedBitmapFrame(string reminderCharacter, CpuLoadLevel loadLevel, bool useDarkMode, int frame, int frameSize)
     {
-        using var bitmap = new Bitmap(32, 32);
+        using var bitmap = new Bitmap(32, 32, PixelFormat.Format32bppArgb);
         using var graphics = Graphics.FromImage(bitmap);
         graphics.SmoothingMode = SmoothingMode.None;
         graphics.InterpolationMode = InterpolationMode.NearestNeighbor;
@@ -174,16 +358,9 @@ public static class TrayReminderIconFactory
             DrawPixelCat(graphics, iconColor, frame);
         }
 
-        var hIcon = bitmap.GetHicon();
-        try
-        {
-            using var icon = Icon.FromHandle(hIcon);
-            return (Icon)icon.Clone();
-        }
-        finally
-        {
-            NativeMethods.DestroyIcon(hIcon);
-        }
+        return frameSize == 32
+            ? (Bitmap)bitmap.Clone()
+            : RenderToFrame(bitmap, new Rectangle(0, 0, bitmap.Width, bitmap.Height), frameSize);
     }
 
     private static void DrawPixelCat(Graphics graphics, Color color, int frame)

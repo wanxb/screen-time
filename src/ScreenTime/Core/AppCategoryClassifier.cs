@@ -13,17 +13,47 @@ public sealed class AppCategoryClassifier
 
     public AppCategory Classify(ForegroundAppInfo app)
     {
+        var bestCategory = AppCategory.Other;
+        var bestScore = 0;
+
         foreach (var rule in _ruleSet.Rules)
         {
-            if (Contains(rule.ProcessNames, app.ProcessName)
-                || Contains(rule.PathKeywords, app.ExecutablePath)
-                || Contains(rule.NameKeywords, app.Name))
+            var score = Score(rule, app);
+            if (score > bestScore)
             {
-                return rule.Category;
+                bestScore = score;
+                bestCategory = rule.Category;
             }
         }
 
-        return AppCategory.Other;
+        return bestCategory;
+    }
+
+    private static int Score(AppCategoryRule rule, ForegroundAppInfo app)
+    {
+        var score = 0;
+
+        if (ContainsExact(rule.ProcessNames, app.ProcessName))
+        {
+            score += 100;
+        }
+
+        if (Contains(rule.PathKeywords, app.ExecutablePath))
+        {
+            score += 70;
+        }
+
+        if (Contains(rule.NameKeywords, app.Name))
+        {
+            score += 50;
+        }
+
+        if (Contains(rule.WindowTitleKeywords, app.WindowTitle))
+        {
+            score += 45;
+        }
+
+        return score;
     }
 
     private static bool Contains(IEnumerable<string> needles, string haystack)
@@ -36,5 +66,17 @@ public sealed class AppCategoryClassifier
         return needles.Any(needle =>
             !string.IsNullOrWhiteSpace(needle)
             && haystack.Contains(needle, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ContainsExact(IEnumerable<string> needles, string haystack)
+    {
+        if (string.IsNullOrWhiteSpace(haystack))
+        {
+            return false;
+        }
+
+        return needles.Any(needle =>
+            !string.IsNullOrWhiteSpace(needle)
+            && string.Equals(needle, haystack, StringComparison.OrdinalIgnoreCase));
     }
 }

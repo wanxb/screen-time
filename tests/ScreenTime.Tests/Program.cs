@@ -9,6 +9,8 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Tray animation speed follows CPU usage", TestTrayAnimationSpeed),
     ("Tray icon follows theme color", TestTrayIconThemeColor),
     ("App category classifier matches process, path, and name", TestAppCategoryClassifier),
+    ("App category classifier uses window title hints", TestAppCategoryClassifierWindowTitle),
+    ("Reminder suppression detector skips full-screen media and presentations", TestReminderSuppressionDetector),
     ("Atomic file writer creates and replaces files", TestAtomicFileWriter),
     ("Settings store creates defaults", TestSettingsStoreCreatesDefaults),
     ("Settings store backs up corrupt JSON", TestSettingsStoreCorruptJson),
@@ -103,6 +105,61 @@ static Task TestAppCategoryClassifier()
     AssertEqual(AppCategory.Work, classifier.Classify(new ForegroundAppInfo { Name = "Figma" }));
     AssertEqual(AppCategory.Social, classifier.Classify(new ForegroundAppInfo { ProcessName = "WeChat" }));
     AssertEqual(AppCategory.Other, classifier.Classify(new ForegroundAppInfo { ProcessName = "unknown" }));
+    return Task.CompletedTask;
+}
+
+static Task TestAppCategoryClassifierWindowTitle()
+{
+    var classifier = new AppCategoryClassifier(new AppCategoryRuleSet
+    {
+        Rules =
+        [
+            new AppCategoryRule
+            {
+                Category = AppCategory.Entertainment,
+                WindowTitleKeywords = ["youtube", "bilibili"]
+            }
+        ]
+    });
+
+    AssertEqual(AppCategory.Entertainment, classifier.Classify(new ForegroundAppInfo
+    {
+        ProcessName = "chrome",
+        Name = "Google Chrome",
+        WindowTitle = "YouTube - lecture"
+    }));
+    AssertEqual(AppCategory.Other, classifier.Classify(new ForegroundAppInfo
+    {
+        ProcessName = "chrome",
+        Name = "Google Chrome",
+        WindowTitle = "Inbox"
+    }));
+    return Task.CompletedTask;
+}
+
+static Task TestReminderSuppressionDetector()
+{
+    AssertTrue(ReminderSuppressionDetector.TryGetSuppressionReason(new ForegroundAppInfo
+    {
+        ProcessName = "chrome",
+        WindowTitle = "YouTube - video",
+        IsFullScreen = true
+    }, out var videoReason), "Full-screen browser video should suppress reminders.");
+    AssertEqual("全屏视频中", videoReason);
+
+    AssertTrue(ReminderSuppressionDetector.TryGetSuppressionReason(new ForegroundAppInfo
+    {
+        ProcessName = "powerpnt",
+        IsFullScreen = true
+    }, out var presentationReason), "Full-screen PowerPoint should suppress reminders.");
+    AssertEqual("演示中", presentationReason);
+
+    AssertFalse(ReminderSuppressionDetector.TryGetSuppressionReason(new ForegroundAppInfo
+    {
+        ProcessName = "chrome",
+        WindowTitle = "YouTube - video",
+        IsFullScreen = false
+    }, out _), "Windowed browser video should not suppress reminders.");
     return Task.CompletedTask;
 }
 

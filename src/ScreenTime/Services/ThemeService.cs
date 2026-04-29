@@ -57,17 +57,32 @@ public static class ThemeService
             || (mode.Equals("system", StringComparison.OrdinalIgnoreCase) && IsSystemDarkMode());
     }
 
+    public static bool IsTrayDarkMode(string? themeMode)
+    {
+        return IsSystemShellDarkMode();
+    }
+
     private static bool IsSystemDarkMode()
+    {
+        return IsRegistryDarkMode("AppsUseLightTheme", false);
+    }
+
+    private static bool IsSystemShellDarkMode()
+    {
+        return IsRegistryDarkMode("SystemUsesLightTheme", IsSystemDarkMode());
+    }
+
+    private static bool IsRegistryDarkMode(string valueName, bool fallback)
     {
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-            var value = key?.GetValue("AppsUseLightTheme");
-            return value is int intValue && intValue == 0;
+            var value = key?.GetValue(valueName);
+            return value is int intValue ? intValue == 0 : fallback;
         }
         catch
         {
-            return false;
+            return fallback;
         }
     }
 

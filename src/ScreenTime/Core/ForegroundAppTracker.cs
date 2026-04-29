@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Text;
 using ScreenTime.Models;
 
 namespace ScreenTime.Core;
@@ -25,13 +27,16 @@ public sealed class ForegroundAppTracker
             var processName = process.ProcessName;
             var executablePath = TryGetExecutablePath(process);
             var displayName = TryGetDisplayName(process, executablePath, processName);
+            var windowTitle = TryGetWindowTitle(handle);
 
             return new ForegroundAppInfo
             {
                 ProcessId = (int)processId,
                 Name = displayName,
                 ProcessName = processName,
-                ExecutablePath = executablePath
+                ExecutablePath = executablePath,
+                WindowTitle = windowTitle,
+                IsFullScreen = IsWindowFullScreen(handle)
             };
         }
         catch (ArgumentException)
@@ -80,5 +85,60 @@ public sealed class ForegroundAppTracker
         }
 
         return string.IsNullOrWhiteSpace(process.MainWindowTitle) ? processName : process.MainWindowTitle;
+    }
+
+    private static string TryGetWindowTitle(nint handle)
+    {
+        try
+        {
+            var length = NativeMethods.GetWindowTextLength(handle);
+            if (length <= 0)
+            {
+                return string.Empty;
+            }
+
+            var builder = new StringBuilder(length + 1);
+            return NativeMethods.GetWindowText(handle, builder, builder.Capacity) > 0
+                ? builder.ToString()
+                : string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static bool IsWindowFullScreen(nint handle)
+    {
+        const uint monitorDefaultToNearest = 2;
+        const int tolerance = 8;
+
+        if (!NativeMethods.GetWindowRect(handle, out var windowRect)
+            || windowRect.Width <= 0
+            || windowRect.Height <= 0)
+        {
+            return false;
+        }
+
+        var monitor = NativeMethods.MonitorFromWindow(handle, monitorDefaultToNearest);
+        if (monitor == 0)
+        {
+            return false;
+        }
+
+        var monitorInfo = new NativeMethods.MonitorInfo
+        {
+            CbSize = (uint)Marshal.SizeOf<NativeMethods.MonitorInfo>()
+        };
+        if (!NativeMethods.GetMonitorInfo(monitor, ref monitorInfo))
+        {
+            return false;
+        }
+
+        var monitorRect = monitorInfo.RcMonitor;
+        return windowRect.Left <= monitorRect.Left + tolerance
+            && windowRect.Top <= monitorRect.Top + tolerance
+            && windowRect.Right >= monitorRect.Right - tolerance
+            && windowRect.Bottom >= monitorRect.Bottom - tolerance;
     }
 }

@@ -6,6 +6,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="屏幕时间"
+        Icon="Assets/AppIcon.ico"
         Height="620"
         Width="1040"
         MinHeight="560"
@@ -110,7 +111,7 @@
             <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
             <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -127,8 +128,8 @@
         </Style>
 
         <Style TargetType="ListViewItem">
-            <Setter Property="MinHeight" Value="24" />
-            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Padding" Value="6,4" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -167,7 +168,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid Margin="32,22,32,14">
+        <Grid Margin="28,20,28,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
@@ -238,14 +239,14 @@
             </Border>
         </Grid>
 
-        <Grid Grid.Row="1" Margin="32,0,32,32">
+        <Grid Grid.Row="1" Margin="28,0,28,28">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.35*" />
-                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="1.25*" />
+                <ColumnDefinition Width="16" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Border Padding="22"
+            <Border Padding="18"
                     Background="{DynamicResource SurfaceBrush}"
                     BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1"
@@ -498,7 +499,7 @@
             </Border>
 
             <Border Grid.Column="2"
-                    Padding="22"
+                    Padding="14"
                     Background="{DynamicResource SurfaceBrush}"
                     BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1"
@@ -539,10 +540,38 @@
                               SelectionChanged="OnTopAppSelectionChanged">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="软件" DisplayMemberBinding="{Binding Name}" Width="144" />
-                                <GridViewColumn Header="分类" DisplayMemberBinding="{Binding Category}" Width="66" />
-                                <GridViewColumn Header="时长" DisplayMemberBinding="{Binding Time}" Width="78" />
-                                <GridViewColumn Header="占比" DisplayMemberBinding="{Binding Share}" Width="48" />
+                                <GridViewColumn Header="软件" Width="182">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="24" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Width="24"
+                                                        Height="24"
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Center"
+                                                        Background="{DynamicResource SurfaceAltBrush}"
+                                                        CornerRadius="6">
+                                                    <Image Width="20"
+                                                           Height="20"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Source="{Binding Icon}" />
+                                                </Border>
+                                                <TextBlock Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding Name}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="分类" DisplayMemberBinding="{Binding Category}" Width="52" />
+                                <GridViewColumn Header="时长" DisplayMemberBinding="{Binding Time}" Width="72" />
+                                <GridViewColumn Header="占比" DisplayMemberBinding="{Binding Share}" Width="60" />
                             </GridView>
                         </ListView.View>
                     </ListView>

@@ -14,6 +14,7 @@ namespace ScreenTime;
 public partial class MainWindow : Window
 {
     private readonly AppBootstrapper _bootstrapper = new();
+    private readonly AppIconProvider _appIconProvider = new();
     private UsageTimer? _usageTimer;
     private ReminderScheduler? _reminderScheduler;
     private SettingsWindow? _settingsWindow;
@@ -113,7 +114,10 @@ public partial class MainWindow : Window
         ContinuousTimeText.Text = FormatDuration(snapshot.TodayUsage.ContinuousActiveSeconds);
         NextBreakText.Text = FormatDuration(remainingSeconds);
 
-        StatusText.Text = $"{FormatDuration((int)snapshot.IdleTime.TotalSeconds)}空闲 · {snapshot.TodayUsage.Apps.Count} 个软件 · {snapshot.UpdatedAt:HH:mm:ss}";
+        var reminderStatus = ReminderSuppressionDetector.TryGetSuppressionReason(snapshot.CurrentApp, out var suppressionReason)
+            ? $" · 提醒延后：{suppressionReason}"
+            : string.Empty;
+        StatusText.Text = $"{FormatDuration((int)snapshot.IdleTime.TotalSeconds)}空闲 · {snapshot.TodayUsage.Apps.Count} 个软件 · {snapshot.UpdatedAt:HH:mm:ss}{reminderStatus}";
         _ = RenderDashboardAsync();
 
         _trayService?.UpdateSnapshot(snapshot);
@@ -407,7 +411,15 @@ public partial class MainWindow : Window
         }
 
         ClearAppDetail();
-        _selectedCategory = _selectedCategory == row.Category ? null : row.Category;
+        if (row.Category is null)
+        {
+            _selectedCategory = null;
+        }
+        else
+        {
+            _selectedCategory = _selectedCategory == row.Category.Value ? null : row.Category.Value;
+        }
+
         RefreshAppLists();
     }
 
@@ -690,14 +702,19 @@ public partial class MainWindow : Window
 
     private static List<CategoryStatRow> BuildCategoryStats(IEnumerable<AppUsage> apps, int totalSeconds, AppCategory? selectedCategory)
     {
-        var rows = CategoryOrder
+        var rows = new List<CategoryStatRow>
+        {
+            new(null, "全部", FormatDurationCompact(totalSeconds), totalSeconds, CategoryBrush(AppCategory.Work), selectedCategory is null)
+        };
+
+        var categoryRows = CategoryOrder
             .Select(category =>
             {
                 var seconds = apps.Where(app => app.Category == category).Sum(app => app.ActiveSeconds);
                 return new CategoryStatRow(
                     category,
                     FormatCategory(category),
-                    FormatDuration(seconds),
+                    FormatDurationCompact(seconds),
                     seconds,
                     CategoryBrush(category),
                     selectedCategory == category);
@@ -705,17 +722,17 @@ public partial class MainWindow : Window
             .Where(row => row.Seconds > 0)
             .ToList();
 
-        return rows.Count == 0
-            ? [new CategoryStatRow(AppCategory.Other, "暂无记录", "0 秒", 0, CategoryBrush(AppCategory.Other), false)]
-            : rows;
+        rows.AddRange(categoryRows);
+        return rows;
     }
 
-    private static List<TopAppRow> BuildAppRows(IEnumerable<AppUsage> apps, int totalSeconds)
+    private List<TopAppRow> BuildAppRows(IEnumerable<AppUsage> apps, int totalSeconds)
     {
         return apps
             .OrderByDescending(app => app.ActiveSeconds)
             .Select(app => new TopAppRow(
                 AppKey(app),
+                _appIconProvider.GetIcon(app),
                 app.Name,
                 FormatCategory(app.Category),
                 FormatDuration(app.ActiveSeconds),
@@ -845,7 +862,7 @@ public partial class MainWindow : Window
         Daily
     }
 
-    private sealed record TopAppRow(string Key, string Name, string Category, string Time, string Share);
+    private sealed record TopAppRow(string Key, ImageSource Icon, string Name, string Category, string Time, string Share);
     private sealed record TimeBucket(int Hour, Dictionary<AppCategory, int> CategorySeconds)
     {
         public int TotalSeconds => CategorySeconds.Values.Sum();
@@ -854,7 +871,7 @@ public partial class MainWindow : Window
     private sealed record ChartData(List<ChartBar> Bars, string AxisMaxText, int AxisMaxSeconds, int AverageSeconds, double AverageRatio);
     private sealed record ChartBar(string Label, string ValueText, string TotalText, int TotalSeconds, List<ChartSegment> Segments);
     private sealed record ChartSegment(int Seconds, int AxisMaxSeconds, double Width, MediaBrush Fill);
-    private sealed record CategoryStatRow(AppCategory Category, string Name, string Time, int Seconds, MediaBrush Fill, bool IsSelected);
+    private sealed record CategoryStatRow(AppCategory? Category, string Name, string Time, int Seconds, MediaBrush Fill, bool IsSelected);
 }
 
 public sealed class ChartSegmentHeightConverter : IMultiValueConverter

@@ -25,7 +25,8 @@ public sealed class ReminderScheduler
         }
 
         var thresholdSeconds = Math.Max(1, _settings.ReminderIntervalMinutes * 60);
-        if (snapshot.TodayUsage.ContinuousActiveSeconds >= thresholdSeconds)
+        if (snapshot.TodayUsage.ContinuousActiveSeconds >= thresholdSeconds
+            && !ReminderSuppressionDetector.TryGetSuppressionReason(snapshot.CurrentApp, out _))
         {
             _isReminderOpen = true;
             ReminderDue?.Invoke(this, new ReminderDueEventArgs(snapshot.TodayUsage, thresholdSeconds));

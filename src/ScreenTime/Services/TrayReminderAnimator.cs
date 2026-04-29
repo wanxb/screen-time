@@ -28,6 +28,7 @@ public sealed class TrayReminderAnimator : IDisposable
         _timer = new DispatcherTimer();
         _timer.Tick += OnTick;
         RebuildFrames();
+        WarmFrameCache();
         ApplyInterval();
     }
 
@@ -122,6 +123,54 @@ public sealed class TrayReminderAnimator : IDisposable
         _frames = TrayReminderIconFactory.CreateFrames(_reminderCharacter, _loadLevel, _useDarkMode, _assetDirectory);
         _frameIndex = 0;
         ApplyFrame();
+    }
+
+    private void WarmFrameCache()
+    {
+        var currentCharacter = _reminderCharacter;
+        var currentLoadLevel = _loadLevel;
+        var currentUseDarkMode = _useDarkMode;
+        var assetDirectory = _assetDirectory;
+
+        _ = Task.Run(() =>
+        {
+            WarmCharacterFrames(currentCharacter, currentLoadLevel, currentUseDarkMode, assetDirectory);
+
+            foreach (var reminderCharacter in new[] { "cat", "dog" })
+            {
+                foreach (var useDarkMode in new[] { false, true })
+                {
+                    foreach (var loadLevel in Enum.GetValues<CpuLoadLevel>())
+                    {
+                        WarmCharacterFrames(reminderCharacter, loadLevel, useDarkMode, assetDirectory);
+                    }
+                }
+            }
+        });
+    }
+
+    private static void WarmCharacterFrames(
+        string reminderCharacter,
+        CpuLoadLevel loadLevel,
+        bool useDarkMode,
+        string? assetDirectory)
+    {
+        try
+        {
+            var icons = TrayReminderIconFactory.CreateFrames(
+                reminderCharacter,
+                loadLevel,
+                useDarkMode,
+                assetDirectory);
+            foreach (var icon in icons)
+            {
+                icon.Dispose();
+            }
+        }
+        catch
+        {
+            // Cache warm-up is opportunistic; normal frame creation remains the fallback.
+        }
     }
 
     private void ApplyFrame()
