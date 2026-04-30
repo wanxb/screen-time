@@ -4,9 +4,9 @@
 
 ## 下载
 
-[下载 Windows 版](https://github.com/wanxb/screen-time/releases/latest/download/ScreenTime-v0.1.0-win-x64.exe)
+[下载 Windows 版](https://github.com/wanxb/screen-time/releases/latest/download/ScreenTime-v0.1.0-win-x64.zip)
 
-下载后直接运行 `ScreenTime-v0.1.0-win-x64.exe` 即可，不需要额外安装 .NET 运行环境。
+下载压缩包后解压，运行 `ScreenTime.exe` 即可，不需要额外安装 .NET 运行环境。
 
 ## 预览
 
