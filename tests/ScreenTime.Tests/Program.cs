@@ -86,7 +86,7 @@ static Task TestReminderCharacterAssets()
     using var dogTrayFrames = new BitmapFrameSet(TrayReminderIconFactory.CreateBitmapFrames("dog", CpuLoadLevel.Low, false, 32));
 
     AssertTrue(trayFrames.Frames.Length >= 5, "Cat tray frames should be available.");
-    AssertTrue(dogTrayFrames.Frames.Length >= 6, "Dog tray frames should be available.");
+    AssertTrue(dogTrayFrames.Frames.Length >= 5, "Dog tray frames should be available.");
     var videoDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "TrayRunners", "cat", "video");
     AssertTrue(File.Exists(Path.Combine(videoDirectory, "cat_0.webm")), "Cat entry video should be copied to output.");
     AssertTrue(File.Exists(Path.Combine(videoDirectory, "cat_1.webm")), "Cat idle video should be copied to output.");

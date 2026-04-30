@@ -4,21 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>屏幕时间 - 轻量的 Windows 使用时长提醒工具</title>
+  <meta name="description" content="屏幕时间是一款轻量的 Windows 本机使用时长统计与休息提醒工具。">
   <style>
     :root {
       color-scheme: light;
       --bg: #f7f5f0;
       --surface: #ffffff;
+      --surface-soft: #f1ede5;
       --ink: #1d1b18;
-      --muted: #635f57;
-      --line: #e3ded5;
+      --muted: #625d55;
+      --line: #e2dcd2;
       --accent: #2f7d52;
+      --accent-deep: #23613f;
       --accent-soft: #e9f4ef;
       --shadow: 0 24px 70px rgba(36, 31, 24, 0.12);
     }
 
     * {
       box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
     }
 
     body {
@@ -33,15 +40,11 @@
       text-decoration: none;
     }
 
-    .page {
-      min-height: 100vh;
-    }
-
     .nav {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      max-width: 1120px;
+      max-width: 1160px;
       margin: 0 auto;
       padding: 22px 28px;
     }
@@ -61,24 +64,28 @@
       border-radius: 8px;
       background: var(--accent);
       color: #fff;
-      font-size: 18px;
+      font-size: 15px;
+      font-weight: 800;
     }
 
-    .nav-link {
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 20px;
       color: var(--muted);
       font-size: 14px;
     }
 
     .hero {
-      max-width: 1120px;
+      max-width: 1160px;
       margin: 0 auto;
-      padding: 48px 28px 76px;
+      padding: 48px 28px 78px;
     }
 
     .hero-grid {
       display: grid;
-      grid-template-columns: minmax(0, 0.82fr) minmax(420px, 1.18fr);
-      gap: 48px;
+      grid-template-columns: minmax(0, 0.8fr) minmax(480px, 1.2fr);
+      gap: 52px;
       align-items: center;
     }
 
@@ -89,7 +96,7 @@
     }
 
     h1 {
-      max-width: 520px;
+      max-width: 540px;
       margin: 16px 0 18px;
       font-size: 56px;
       line-height: 1.08;
@@ -97,7 +104,7 @@
     }
 
     .lead {
-      max-width: 500px;
+      max-width: 520px;
       margin: 0;
       color: var(--muted);
       font-size: 18px;
@@ -121,12 +128,28 @@
       border-radius: 8px;
       background: var(--surface);
       font-weight: 700;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+      border-color: #b9d9c9;
     }
 
     .button.primary {
       border-color: var(--accent);
       background: var(--accent);
       color: #fff;
+    }
+
+    .button.primary:hover {
+      background: var(--accent-deep);
+    }
+
+    .meta {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
     }
 
     .shot-wrap {
@@ -153,7 +176,7 @@
       box-shadow: 0 18px 42px rgba(36, 31, 24, 0.16);
     }
 
-    .features {
+    .band {
       border-top: 1px solid var(--line);
       background: var(--surface);
     }
@@ -162,9 +185,9 @@
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 1px;
-      max-width: 1120px;
+      max-width: 1160px;
       margin: 0 auto;
-      padding: 1px 28px 56px;
+      padding: 1px 28px 54px;
     }
 
     .feature {
@@ -186,10 +209,57 @@
       line-height: 1.7;
     }
 
-    .download {
-      max-width: 1120px;
+    .privacy {
+      max-width: 1160px;
       margin: 0 auto;
-      padding: 44px 28px 64px;
+      padding: 44px 28px 8px;
+    }
+
+    .privacy-inner {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 34px;
+      align-items: start;
+      border-top: 1px solid var(--line);
+      padding-top: 34px;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 26px;
+      letter-spacing: 0;
+    }
+
+    .privacy p,
+    .download p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .privacy-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .privacy-list li {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .download {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 46px 28px 68px;
     }
 
     .download-box {
@@ -203,20 +273,11 @@
       background: var(--accent-soft);
     }
 
-    .download h2 {
-      margin: 0 0 8px;
-      font-size: 24px;
-      letter-spacing: 0;
-    }
-
-    .download p {
-      margin: 0;
-      color: var(--muted);
-    }
-
-    @media (max-width: 900px) {
+    @media (max-width: 960px) {
       .hero-grid,
-      .feature-grid {
+      .feature-grid,
+      .privacy-inner,
+      .privacy-list {
         grid-template-columns: 1fr;
       }
 
@@ -235,18 +296,43 @@
         flex-direction: column;
       }
     }
+
+    @media (max-width: 560px) {
+      .nav {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .nav-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .hero {
+        padding-top: 34px;
+      }
+
+      h1 {
+        font-size: 36px;
+      }
+    }
   </style>
 </head>
 <body>
-  <main class="page">
-    <nav class="nav" aria-label="主导航">
-      <a class="brand" href="#">
-        <span class="mark">◎</span>
-        <span>屏幕时间</span>
-      </a>
-      <a class="nav-link" href="#download">下载</a>
-    </nav>
+  <nav class="nav" aria-label="主导航">
+    <a class="brand" href="#">
+      <span class="mark">ST</span>
+      <span>屏幕时间</span>
+    </a>
+    <div class="nav-actions">
+      <a href="#features">功能</a>
+      <a href="#privacy">隐私</a>
+      <a href="#download">下载</a>
+    </div>
+  </nav>
 
+  <main>
     <section class="hero">
       <div class="hero-grid">
         <div>
@@ -254,9 +340,10 @@
           <h1>屏幕时间</h1>
           <p class="lead">看清每天的电脑使用节奏，在连续专注太久时收到温和提醒。数据只保存在本机，界面克制，适合长期放在托盘里运行。</p>
           <div class="actions">
-            <a class="button primary" href="./ScreenTime.zip" download>下载 Windows 版</a>
-            <a class="button" href="README.md">查看文档</a>
+            <a class="button primary" href="https://github.com/wanxb/screen-time/releases/latest/download/ScreenTime-v0.1.0-win-x64.zip" download>下载 Windows 版</a>
+            <a class="button" href="https://github.com/wanxb/screen-time/releases/latest">查看发布页</a>
           </div>
+          <div class="meta">适用于 Windows x64，解压后运行 ScreenTime.exe。需要 .NET 8 Desktop Runtime。</div>
         </div>
         <div class="shot-wrap">
           <img class="shot" src="src/ScreenTime/Assets/preview_0.png" alt="屏幕时间主界面预览">
@@ -265,7 +352,7 @@
       </div>
     </section>
 
-    <section class="features" aria-label="功能">
+    <section class="band" id="features" aria-label="功能">
       <div class="feature-grid">
         <div class="feature">
           <strong>时长统计</strong>
@@ -277,7 +364,7 @@
         </div>
         <div class="feature">
           <strong>托盘常驻</strong>
-          <span>最小化后保持后台运行，可用小猫或小狗动画提示状态。</span>
+          <span>最小化后保持后台运行，适合长期安静地陪着工作。</span>
         </div>
         <div class="feature">
           <strong>本机隐私</strong>
@@ -286,13 +373,28 @@
       </div>
     </section>
 
+    <section class="privacy" id="privacy">
+      <div class="privacy-inner">
+        <div>
+          <h2>只统计必要信息</h2>
+          <p>屏幕时间面向个人自用，不需要云端账号，不上传使用数据。统计结果保存在本机 AppData 目录。</p>
+        </div>
+        <ul class="privacy-list">
+          <li>会记录：软件名、进程名、可执行路径、活跃秒数和分类。</li>
+          <li>会记录：提醒触发与关闭记录，用于计算连续使用状态。</li>
+          <li>不会记录：键盘输入、聊天内容、文档内容或截图录屏。</li>
+          <li>不会记录：浏览器 URL、网页内容、账号或云端数据。</li>
+        </ul>
+      </div>
+    </section>
+
     <section class="download" id="download">
       <div class="download-box">
         <div>
           <h2>开始使用屏幕时间</h2>
-          <p>下载压缩包，解压后运行 ScreenTime.exe。</p>
+          <p>下载压缩包，解压后运行 ScreenTime.exe。当前发布包需要 .NET 8 Desktop Runtime，首次启动后可在设置里调整提醒间隔、主题和托盘行为。</p>
         </div>
-        <a class="button primary" href="./ScreenTime.zip" download>下载 Windows 版</a>
+        <a class="button primary" href="https://github.com/wanxb/screen-time/releases/latest/download/ScreenTime-v0.1.0-win-x64.zip" download>下载 Windows 版</a>
       </div>
     </section>
   </main>
