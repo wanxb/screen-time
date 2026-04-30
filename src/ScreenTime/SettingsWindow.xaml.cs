@@ -1,7 +1,12 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using ScreenTime.Models;
 using ScreenTime.Services;
+using WpfDataFormats = System.Windows.DataFormats;
+using WpfDataObject = System.Windows.DataObject;
+using WpfKeyEventArgs = System.Windows.Input.KeyEventArgs;
+using WpfTextBox = System.Windows.Controls.TextBox;
 
 namespace ScreenTime;
 
@@ -15,6 +20,9 @@ public partial class SettingsWindow : Window
         _settings = settings;
         SourceInitialized += (_, _) => ThemeService.ApplyWindowTitleBar(this, _settings.ThemeMode);
         LoadSettings();
+        ConfigureIntegerInput(ReminderIntervalBox);
+        ConfigureIntegerInput(BreakDurationBox);
+        ConfigureIntegerInput(IdleThresholdBox);
     }
 
     public bool SettingsSaved { get; private set; }
@@ -85,5 +93,50 @@ public partial class SettingsWindow : Window
     private static bool TryParseInt(string value, int min, int max, out int parsed)
     {
         return int.TryParse(value, out parsed) && parsed >= min && parsed <= max;
+    }
+
+    private static void ConfigureIntegerInput(WpfTextBox textBox)
+    {
+        textBox.PreviewTextInput += OnIntegerPreviewTextInput;
+        textBox.PreviewKeyDown += OnIntegerPreviewKeyDown;
+        WpfDataObject.AddPastingHandler(textBox, OnIntegerPaste);
+    }
+
+    private static void OnIntegerPreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (sender is not WpfTextBox textBox)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        e.Handled = !WouldRemainInteger(textBox, e.Text);
+    }
+
+    private static void OnIntegerPreviewKeyDown(object sender, WpfKeyEventArgs e)
+    {
+        if (e.Key == Key.Space)
+        {
+            e.Handled = true;
+        }
+    }
+
+    private static void OnIntegerPaste(object sender, DataObjectPastingEventArgs e)
+    {
+        if (sender is not WpfTextBox textBox
+            || !e.DataObject.GetDataPresent(WpfDataFormats.Text)
+            || e.DataObject.GetData(WpfDataFormats.Text) is not string pastedText
+            || !WouldRemainInteger(textBox, pastedText))
+        {
+            e.CancelCommand();
+        }
+    }
+
+    private static bool WouldRemainInteger(WpfTextBox textBox, string input)
+    {
+        var proposed = textBox.Text.Remove(textBox.SelectionStart, textBox.SelectionLength)
+            .Insert(textBox.SelectionStart, input);
+
+        return proposed.All(char.IsAsciiDigit);
     }
 }

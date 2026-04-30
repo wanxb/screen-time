@@ -144,7 +144,10 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="48" />
                         </Grid.ColumnDefinitions>
-                        <TextBox x:Name="ReminderIntervalBox" />
+                        <TextBox x:Name="ReminderIntervalBox"
+                                 MaxLength="3"
+                                 InputScope="Number"
+                                 ToolTip="请输入 1 到 240 之间的整数" />
                         <TextBlock Grid.Column="1"
                                    Text="分钟"
                                    Margin="10,0,0,0"
@@ -158,7 +161,10 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="48" />
                         </Grid.ColumnDefinitions>
-                        <TextBox x:Name="BreakDurationBox" />
+                        <TextBox x:Name="BreakDurationBox"
+                                 MaxLength="2"
+                                 InputScope="Number"
+                                 ToolTip="请输入 1 到 60 之间的整数" />
                         <TextBlock Grid.Column="1"
                                    Text="分钟"
                                    Margin="10,0,0,0"
@@ -172,7 +178,10 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="48" />
                         </Grid.ColumnDefinitions>
-                        <TextBox x:Name="IdleThresholdBox" />
+                        <TextBox x:Name="IdleThresholdBox"
+                                 MaxLength="4"
+                                 InputScope="Number"
+                                 ToolTip="请输入 10 到 3600 之间的整数" />
                         <TextBlock Grid.Column="1"
                                    Text="秒"
                                    Margin="10,0,0,0"
