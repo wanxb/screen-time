@@ -6,7 +6,7 @@
 
 [下载 Windows 版](https://github.com/wanxb/screen-time/releases/latest/download/ScreenTime-v0.1.0-win-x64.zip)
 
-下载压缩包后解压，运行 `ScreenTime.exe` 即可。当前发布包需要 Windows 已安装 [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)。
+下载压缩包后解压，运行 `ScreenTime.exe` 即可，不需要额外安装 .NET 运行环境。
 
 ## 预览
 
