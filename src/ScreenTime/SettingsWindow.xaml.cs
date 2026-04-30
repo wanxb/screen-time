@@ -26,7 +26,7 @@ public partial class SettingsWindow : Window
         MinimizeToTrayBox.IsChecked = _settings.MinimizeToTray;
         TrayAnimationBox.IsChecked = _settings.TrayReminderAnimationEnabled;
         LaunchAtStartupBox.IsChecked = _settings.LaunchAtStartup;
-        ReminderCharacterBox.SelectedIndex = _settings.ReminderCharacter.Equals("dog", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        // Reminder character selection is temporarily hidden in SettingsWindow.xaml.
         ThemeModeBox.SelectedIndex = _settings.ThemeMode switch
         {
             "light" => 1,
@@ -71,7 +71,7 @@ public partial class SettingsWindow : Window
         _settings.MinimizeToTray = MinimizeToTrayBox.IsChecked == true;
         _settings.TrayReminderAnimationEnabled = TrayAnimationBox.IsChecked == true;
         _settings.LaunchAtStartup = LaunchAtStartupBox.IsChecked == true;
-        _settings.ReminderCharacter = ((ComboBoxItem)ReminderCharacterBox.SelectedItem).Tag?.ToString() ?? "cat";
+        // Keep the existing reminder character while the setting is temporarily hidden.
         _settings.ThemeMode = ((ComboBoxItem)ThemeModeBox.SelectedItem).Tag?.ToString() ?? "system";
         _settings.ReminderIntervalMinutes = reminderInterval;
         _settings.BreakDurationMinutes = breakDuration;

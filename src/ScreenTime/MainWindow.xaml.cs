@@ -689,12 +689,7 @@ public partial class MainWindow : Window
 
     private static List<CategoryStatRow> BuildCategoryStats(IEnumerable<AppUsage> apps, int totalSeconds, AppCategory? selectedCategory)
     {
-        var rows = new List<CategoryStatRow>
-        {
-            new(null, "全部", FormatDurationCompact(totalSeconds), totalSeconds, CategoryBrush(AppCategory.Work), selectedCategory is null)
-        };
-
-        var categoryRows = CategoryOrder
+        return CategoryOrder
             .Select(category =>
             {
                 var seconds = apps.Where(app => app.Category == category).Sum(app => app.ActiveSeconds);
@@ -708,9 +703,6 @@ public partial class MainWindow : Window
             })
             .Where(row => row.Seconds > 0)
             .ToList();
-
-        rows.AddRange(categoryRows);
-        return rows;
     }
 
     private List<TopAppRow> BuildAppRows(IEnumerable<AppUsage> apps, int totalSeconds)

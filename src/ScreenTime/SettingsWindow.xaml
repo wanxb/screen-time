@@ -195,11 +195,13 @@
                         <ComboBoxItem Content="深色" Tag="dark" />
                     </ComboBox>
 
+                    <!--
                     <TextBlock Text="提醒形象" Margin="0,16,0,8" FontWeight="SemiBold" />
                     <ComboBox x:Name="ReminderCharacterBox">
                         <ComboBoxItem Content="小猫" Tag="cat" />
                         <ComboBoxItem Content="小狗" Tag="dog" />
                     </ComboBox>
+                    -->
 
                     <TextBlock Text="提醒遮罩透明度" Margin="0,18,0,8" FontWeight="SemiBold" />
                     <Slider x:Name="OverlayOpacitySlider"

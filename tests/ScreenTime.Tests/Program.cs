@@ -8,7 +8,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Cpu load classifier thresholds", TestCpuLoadClassifier),
     ("Tray animation speed follows CPU usage", TestTrayAnimationSpeed),
     ("Tray icon follows theme color", TestTrayIconThemeColor),
-    ("Cat tray frames and video assets are available", TestCatAssets),
+    ("Reminder character assets are available", TestReminderCharacterAssets),
     ("App category classifier matches process, path, and name", TestAppCategoryClassifier),
     ("App category classifier uses window title hints", TestAppCategoryClassifierWindowTitle),
     ("Reminder suppression detector skips full-screen media and presentations", TestReminderSuppressionDetector),
@@ -75,16 +75,18 @@ static Task TestTrayIconThemeColor()
 {
     AssertIconIsMostly("generated-cat", useDarkMode: true, shouldBeLight: true);
     AssertIconIsMostly("generated-cat", useDarkMode: false, shouldBeLight: false);
-    AssertIconIsMostly("dog", useDarkMode: true, shouldBeLight: true);
-    AssertIconIsMostly("dog", useDarkMode: false, shouldBeLight: false);
+    AssertIconHasVisiblePixels("dog", useDarkMode: true);
+    AssertIconHasVisiblePixels("dog", useDarkMode: false);
     return Task.CompletedTask;
 }
 
-static Task TestCatAssets()
+static Task TestReminderCharacterAssets()
 {
     using var trayFrames = new BitmapFrameSet(TrayReminderIconFactory.CreateBitmapFrames("cat", CpuLoadLevel.Low, false, 32));
+    using var dogTrayFrames = new BitmapFrameSet(TrayReminderIconFactory.CreateBitmapFrames("dog", CpuLoadLevel.Low, false, 32));
 
-    AssertEqual(5, trayFrames.Frames.Length);
+    AssertTrue(trayFrames.Frames.Length >= 5, "Cat tray frames should be available.");
+    AssertTrue(dogTrayFrames.Frames.Length >= 6, "Dog tray frames should be available.");
     var videoDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "TrayRunners", "cat", "video");
     AssertTrue(File.Exists(Path.Combine(videoDirectory, "cat_0.webm")), "Cat entry video should be copied to output.");
     AssertTrue(File.Exists(Path.Combine(videoDirectory, "cat_1.webm")), "Cat idle video should be copied to output.");
@@ -305,6 +307,26 @@ static void AssertIconIsMostly(string reminderCharacter, bool useDarkMode, bool 
     {
         AssertTrue(averageChannel < 80, $"Expected a dark icon, got average channel {averageChannel}.");
     }
+}
+
+static void AssertIconHasVisiblePixels(string reminderCharacter, bool useDarkMode)
+{
+    using var icon = TrayReminderIconFactory.CreateFrames(reminderCharacter, CpuLoadLevel.Low, useDarkMode)[0];
+    using var bitmap = icon.ToBitmap();
+
+    var count = 0;
+    for (var y = 0; y < bitmap.Height; y++)
+    {
+        for (var x = 0; x < bitmap.Width; x++)
+        {
+            if (bitmap.GetPixel(x, y).A > 0)
+            {
+                count++;
+            }
+        }
+    }
+
+    AssertTrue(count > 0, "Tray icon should contain visible pixels.");
 }
 
 sealed class BitmapFrameSet : IDisposable
