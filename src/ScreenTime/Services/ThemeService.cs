@@ -23,6 +23,7 @@ public static class ThemeService
         resources["TextPrimaryBrush"] = Brush(useDark ? "#F5F1E8" : "#1D1B18");
         resources["TextSecondaryBrush"] = Brush(useDark ? "#C7C0B2" : "#5F5A52");
         resources["TextMutedBrush"] = Brush(useDark ? "#9F9788" : "#777067");
+        resources["UsageProgressBrush"] = Brush(useDark ? "#A8A39A" : "#8D8A84");
         resources["AccentBrush"] = Brush(useDark ? "#8FD3A8" : "#2F7D52");
         resources["AccentSoftBrush"] = Brush(useDark ? "#20392A" : "#E9F4EF");
         resources["AccentBorderBrush"] = Brush(useDark ? "#386247" : "#B9D9C9");

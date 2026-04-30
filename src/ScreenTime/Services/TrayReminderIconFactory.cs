@@ -159,14 +159,13 @@ public static class TrayReminderIconFactory
         }
 
         var loadName = loadLevel.ToString().ToLowerInvariant();
-        var patterns = new[]
+        var iconPatterns = new[]
         {
             $"{reminderCharacter}_tray_{loadName}_*.ico",
-            $"{reminderCharacter}_tray_*.ico",
-            $"{reminderCharacter}_*.png"
+            $"{reminderCharacter}_tray_*.ico"
         };
 
-        foreach (var pattern in patterns)
+        foreach (var pattern in iconPatterns)
         {
             var files = Directory.GetFiles(assetDirectory, pattern)
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
@@ -188,27 +187,91 @@ public static class TrayReminderIconFactory
             }
         }
 
-        return [];
+        var pngFiles = GetPngAssetFiles(assetDirectory, reminderCharacter, frameSize);
+        if (pngFiles.Length == 0)
+        {
+            return [];
+        }
+
+        try
+        {
+            return pngFiles.Select(path => CreateBitmapFromAsset(
+                path,
+                useDarkMode,
+                frameSize,
+                IsOverlayPngFrame(path, reminderCharacter))).ToArray();
+        }
+        catch
+        {
+            // Invalid asset frames should not break the tray; generated frames remain the fallback.
+            return [];
+        }
     }
 
-    private static Bitmap CreateBitmapFromAsset(string path, bool useDarkMode, int frameSize)
+    private static string[] GetPngAssetFiles(string assetDirectory, string reminderCharacter, int frameSize)
+    {
+        var files = Directory.GetFiles(assetDirectory, $"{reminderCharacter}_*.png")
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var overlayPrefix = $"{reminderCharacter}_overlay_";
+        var overlayFiles = files
+            .Where(path => Path.GetFileName(path).StartsWith(overlayPrefix, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        var trayFiles = files
+            .Where(path => IsTrayPngFrame(path, reminderCharacter, overlayPrefix))
+            .ToArray();
+
+        return frameSize >= 128 && overlayFiles.Length > 0
+            ? overlayFiles
+            : trayFiles;
+    }
+
+    private static bool IsOverlayPngFrame(string path, string reminderCharacter)
+    {
+        return Path.GetFileName(path).StartsWith(
+            $"{reminderCharacter}_overlay_",
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsTrayPngFrame(string path, string reminderCharacter, string overlayPrefix)
+    {
+        var fileName = Path.GetFileName(path);
+        if (fileName.StartsWith(overlayPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var stem = Path.GetFileNameWithoutExtension(fileName);
+        var suffixStart = reminderCharacter.Length + 1;
+        if (stem.Length <= suffixStart)
+        {
+            return false;
+        }
+
+        var suffix = stem[suffixStart..];
+        return suffix.Length <= 2 && suffix.All(char.IsDigit);
+    }
+
+    private static Bitmap CreateBitmapFromAsset(string path, bool useDarkMode, int frameSize, bool preserveLayout = false)
     {
         if (Path.GetExtension(path).Equals(".ico", StringComparison.OrdinalIgnoreCase))
         {
             using var icon = new Icon(path);
             using var iconBitmap = icon.ToBitmap();
-            return NormalizeAssetBitmap(iconBitmap, useDarkMode, frameSize);
+            return NormalizeAssetBitmap(iconBitmap, useDarkMode, frameSize, preserveLayout);
         }
 
         using var source = new Bitmap(path);
-        return NormalizeAssetBitmap(source, useDarkMode, frameSize);
+        return NormalizeAssetBitmap(source, useDarkMode, frameSize, preserveLayout);
     }
 
-    private static Bitmap NormalizeAssetBitmap(Bitmap source, bool useDarkMode, int frameSize)
+    private static Bitmap NormalizeAssetBitmap(Bitmap source, bool useDarkMode, int frameSize, bool preserveLayout = false)
     {
         var removeLightBackground = HasLightOpaqueCorner(source);
-        var tint = useDarkMode ? Color.White : (Color?)null;
-        var bounds = FindVisibleBounds(source, removeLightBackground);
+        var tint = useDarkMode && ShouldTintForDarkMode(source, removeLightBackground) ? Color.White : (Color?)null;
+        var bounds = preserveLayout
+            ? new Rectangle(0, 0, source.Width, source.Height)
+            : FindVisibleBounds(source, removeLightBackground);
         if (bounds.Width <= 0 || bounds.Height <= 0)
         {
             bounds = new Rectangle(0, 0, source.Width, source.Height);
@@ -291,6 +354,40 @@ public static class TrayReminderIconFactory
         };
 
         return corners.Count(pixel => pixel.A > 200 && IsLightNeutral(pixel)) >= 2;
+    }
+
+    private static bool ShouldTintForDarkMode(Bitmap source, bool removeLightBackground)
+    {
+        var visiblePixels = 0;
+        var totalBrightness = 0;
+        var totalChroma = 0;
+
+        for (var y = 0; y < source.Height; y++)
+        {
+            for (var x = 0; x < source.Width; x++)
+            {
+                var pixel = source.GetPixel(x, y);
+                if (IsBackgroundPixel(pixel, removeLightBackground))
+                {
+                    continue;
+                }
+
+                var max = Math.Max(pixel.R, Math.Max(pixel.G, pixel.B));
+                var min = Math.Min(pixel.R, Math.Min(pixel.G, pixel.B));
+                totalBrightness += (pixel.R + pixel.G + pixel.B) / 3;
+                totalChroma += max - min;
+                visiblePixels++;
+            }
+        }
+
+        if (visiblePixels == 0)
+        {
+            return false;
+        }
+
+        var averageBrightness = totalBrightness / visiblePixels;
+        var averageChroma = totalChroma / visiblePixels;
+        return averageBrightness < 140 && averageChroma < 28;
     }
 
     private static bool IsBackgroundPixel(Color pixel, bool removeLightBackground)

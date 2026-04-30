@@ -128,7 +128,7 @@
         </Style>
 
         <Style TargetType="ListViewItem">
-            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="MinHeight" Value="46" />
             <Setter Property="Padding" Value="6,4" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
             <Setter Property="Background" Value="Transparent" />
@@ -507,40 +507,23 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     <TextBlock Text="应用时长"
                                FontSize="20"
                                FontWeight="SemiBold" />
-                    <Border x:Name="AppDetailPanel"
-                            Grid.Row="1"
-                            Margin="0,12,0,0"
-                            Padding="10,8"
-                            Background="{DynamicResource SurfaceAltBrush}"
-                            BorderBrush="{DynamicResource BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Visibility="Collapsed">
-                        <TextBlock x:Name="AppDetailText"
-                                   FontSize="12"
-                                   TextWrapping="NoWrap"
-                                   TextTrimming="CharacterEllipsis"
-                                   Foreground="{DynamicResource TextSecondaryBrush}" />
-                    </Border>
 
                     <ListView x:Name="TopAppsList"
-                              Grid.Row="2"
+                              Grid.Row="1"
                               Margin="0,16,0,0"
                               BorderThickness="0"
                               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              ScrollViewer.VerticalScrollBarVisibility="Hidden"
                               Background="{DynamicResource SurfaceBrush}"
-                              Foreground="{DynamicResource TextPrimaryBrush}"
-                              SelectionChanged="OnTopAppSelectionChanged">
+                              Foreground="{DynamicResource TextPrimaryBrush}">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="软件" Width="182">
+                                <GridViewColumn Header="软件" Width="220">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
                                             <Grid>
@@ -560,17 +543,41 @@
                                                            VerticalAlignment="Center"
                                                            Source="{Binding Icon}" />
                                                 </Border>
-                                                <TextBlock Grid.Column="1"
-                                                           Margin="8,0,0,0"
-                                                           VerticalAlignment="Center"
-                                                           Text="{Binding Name}"
-                                                           TextTrimming="CharacterEllipsis" />
+                                                <Grid Grid.Column="1"
+                                                      Margin="8,0,0,0"
+                                                      VerticalAlignment="Center">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontSize="12"
+                                                               LineHeight="14"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <Grid Grid.Row="1"
+                                                          Margin="0,5,0,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border Width="{Binding ProgressWidth}"
+                                                                Height="5"
+                                                                VerticalAlignment="Center"
+                                                                Background="{DynamicResource UsageProgressBrush}"
+                                                                CornerRadius="3" />
+                                                        <TextBlock Grid.Column="1"
+                                                                   Margin="4,0,0,0"
+                                                                   FontSize="11"
+                                                                   Text="{Binding Time}"
+                                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                    </Grid>
+                                                </Grid>
                                             </Grid>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
                                 <GridViewColumn Header="分类" DisplayMemberBinding="{Binding Category}" Width="52" />
-                                <GridViewColumn Header="时长" DisplayMemberBinding="{Binding Time}" Width="72" />
+                                <GridViewColumn Header="日均" DisplayMemberBinding="{Binding AverageTime}" Width="72" />
                                 <GridViewColumn Header="占比" DisplayMemberBinding="{Binding Share}" Width="60" />
                             </GridView>
                         </ListView.View>

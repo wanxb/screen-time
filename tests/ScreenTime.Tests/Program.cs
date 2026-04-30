@@ -8,6 +8,7 @@ var tests = new (string Name, Func<Task> Run)[]
     ("Cpu load classifier thresholds", TestCpuLoadClassifier),
     ("Tray animation speed follows CPU usage", TestTrayAnimationSpeed),
     ("Tray icon follows theme color", TestTrayIconThemeColor),
+    ("Cat tray frames and video assets are available", TestCatAssets),
     ("App category classifier matches process, path, and name", TestAppCategoryClassifier),
     ("App category classifier uses window title hints", TestAppCategoryClassifierWindowTitle),
     ("Reminder suppression detector skips full-screen media and presentations", TestReminderSuppressionDetector),
@@ -72,10 +73,21 @@ static Task TestTrayAnimationSpeed()
 
 static Task TestTrayIconThemeColor()
 {
-    AssertIconIsMostly("cat", useDarkMode: true, shouldBeLight: true);
-    AssertIconIsMostly("cat", useDarkMode: false, shouldBeLight: false);
+    AssertIconIsMostly("generated-cat", useDarkMode: true, shouldBeLight: true);
+    AssertIconIsMostly("generated-cat", useDarkMode: false, shouldBeLight: false);
     AssertIconIsMostly("dog", useDarkMode: true, shouldBeLight: true);
     AssertIconIsMostly("dog", useDarkMode: false, shouldBeLight: false);
+    return Task.CompletedTask;
+}
+
+static Task TestCatAssets()
+{
+    using var trayFrames = new BitmapFrameSet(TrayReminderIconFactory.CreateBitmapFrames("cat", CpuLoadLevel.Low, false, 32));
+
+    AssertEqual(5, trayFrames.Frames.Length);
+    var videoDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "TrayRunners", "cat", "video");
+    AssertTrue(File.Exists(Path.Combine(videoDirectory, "cat_0.webm")), "Cat entry video should be copied to output.");
+    AssertTrue(File.Exists(Path.Combine(videoDirectory, "cat_1.webm")), "Cat idle video should be copied to output.");
     return Task.CompletedTask;
 }
 
@@ -292,5 +304,23 @@ static void AssertIconIsMostly(string reminderCharacter, bool useDarkMode, bool 
     else
     {
         AssertTrue(averageChannel < 80, $"Expected a dark icon, got average channel {averageChannel}.");
+    }
+}
+
+sealed class BitmapFrameSet : IDisposable
+{
+    public BitmapFrameSet(System.Drawing.Bitmap[] frames)
+    {
+        Frames = frames;
+    }
+
+    public System.Drawing.Bitmap[] Frames { get; }
+
+    public void Dispose()
+    {
+        foreach (var frame in Frames)
+        {
+            frame.Dispose();
+        }
     }
 }

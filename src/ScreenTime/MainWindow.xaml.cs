@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private string _currentPeriodTotalText = "0 秒";
     private List<AppUsage> _currentApps = [];
     private int _currentAppsTotalSeconds;
+    private Dictionary<string, int> _weeklyAverageSecondsByAppKey = new(StringComparer.OrdinalIgnoreCase);
     private AppCategory? _selectedCategory;
     private DashboardMode _dashboardMode = DashboardMode.Daily;
     private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Now);
@@ -321,6 +322,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        _weeklyAverageSecondsByAppKey = await LoadWeeklyAverageSecondsByAppKeyAsync(_selectedDate);
+
         if (_dashboardMode == DashboardMode.Daily)
         {
             var usage = IsToday(_selectedDate)
@@ -423,53 +426,37 @@ public partial class MainWindow : Window
         RefreshAppLists();
     }
 
-    private async void OnTopAppSelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async Task<Dictionary<string, int>> LoadWeeklyAverageSecondsByAppKeyAsync(DateOnly selectedDate)
     {
-        if (TopAppsList.SelectedItem is not TopAppRow row)
-        {
-            return;
-        }
-
-        await ShowWeeklyAppDetailAsync(row);
-    }
-
-    private async Task ShowWeeklyAppDetailAsync(TopAppRow row)
-    {
-        var weekStart = StartOfWeek(_selectedDate);
+        var weekStart = StartOfWeek(selectedDate);
         var today = DateOnly.FromDateTime(DateTime.Now);
         var weekEnd = weekStart.AddDays(6);
         var elapsedEnd = weekEnd < today ? weekEnd : today;
         var elapsedDays = Math.Max(1, elapsedEnd.DayNumber - weekStart.DayNumber + 1);
-        var days = new List<DailyUsage>();
+        var totals = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < elapsedDays; i++)
         {
             var date = weekStart.AddDays(i);
-            days.Add(IsToday(date)
+            var usage = IsToday(date)
                 ? _bootstrapper.TodayUsage
-                : await _bootstrapper.UsageStore.LoadExistingOrEmptyAsync(date));
+                : await _bootstrapper.UsageStore.LoadExistingOrEmptyAsync(date);
+            foreach (var app in usage.Apps.Values)
+            {
+                var key = AppKey(app);
+                totals.TryGetValue(key, out var seconds);
+                totals[key] = seconds + app.ActiveSeconds;
+            }
         }
 
-        var dailySeconds = days
-            .Select(day => day.Apps.Values.Where(app => AppMatchesRow(app, row)).Sum(app => app.ActiveSeconds))
-            .ToList();
-        var totalSeconds = dailySeconds.Sum();
-        var averageSeconds = totalSeconds / elapsedDays;
-
-        AppDetailText.Text = $"{TrimDetailAppName(row.Name)} · 本周日均 {FormatDuration(averageSeconds)} · 总计 {FormatDuration(totalSeconds)}";
-        AppDetailPanel.Visibility = Visibility.Visible;
-    }
-
-    private static string TrimDetailAppName(string name)
-    {
-        const int maxLength = 24;
-        return name.Length <= maxLength ? name : $"{name[..maxLength]}...";
+        return totals.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value / elapsedDays,
+            StringComparer.OrdinalIgnoreCase);
     }
 
     private void ClearAppDetail()
     {
         TopAppsList.SelectedItem = null;
-        AppDetailPanel.Visibility = Visibility.Collapsed;
-        AppDetailText.Text = string.Empty;
     }
 
     private void OnUsageBarClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -730,19 +717,39 @@ public partial class MainWindow : Window
     {
         return apps
             .OrderByDescending(app => app.ActiveSeconds)
-            .Select(app => new TopAppRow(
-                AppKey(app),
-                _appIconProvider.GetIcon(app),
-                app.Name,
-                FormatCategory(app.Category),
-                FormatDuration(app.ActiveSeconds),
-                totalSeconds == 0 ? "0%" : $"{(app.ActiveSeconds * 100.0 / totalSeconds):0}%"))
+            .Select(app =>
+            {
+                var key = AppKey(app);
+                var sharePercent = totalSeconds == 0 ? 0 : app.ActiveSeconds * 100.0 / totalSeconds;
+                _weeklyAverageSecondsByAppKey.TryGetValue(key, out var averageSeconds);
+                return new TopAppRow(
+                    key,
+                    _appIconProvider.GetIcon(app),
+                    app.Name,
+                    FormatCategory(app.Category),
+                    FormatDurationShort(app.ActiveSeconds),
+                    FormatDuration(averageSeconds),
+                    sharePercent <= 0 ? 0 : Math.Max(8, Math.Min(148, sharePercent * 1.48)),
+                    $"{sharePercent:0}%");
+            })
             .ToList();
     }
 
-    private static bool AppMatchesRow(AppUsage app, TopAppRow row)
+    private static string FormatDurationShort(int totalSeconds)
     {
-        return string.Equals(AppKey(app), row.Key, StringComparison.OrdinalIgnoreCase);
+        if (totalSeconds < 60)
+        {
+            return $"{totalSeconds}秒";
+        }
+
+        var hours = totalSeconds / 3600;
+        var minutes = totalSeconds % 3600 / 60;
+        if (hours <= 0)
+        {
+            return $"{minutes}分钟";
+        }
+
+        return minutes == 0 ? $"{hours}小时" : $"{hours}时{minutes}分";
     }
 
     private static string AppKey(AppUsage app)
@@ -862,7 +869,15 @@ public partial class MainWindow : Window
         Daily
     }
 
-    private sealed record TopAppRow(string Key, ImageSource Icon, string Name, string Category, string Time, string Share);
+    private sealed record TopAppRow(
+        string Key,
+        ImageSource Icon,
+        string Name,
+        string Category,
+        string Time,
+        string AverageTime,
+        double ProgressWidth,
+        string Share);
     private sealed record TimeBucket(int Hour, Dictionary<AppCategory, int> CategorySeconds)
     {
         public int TotalSeconds => CategorySeconds.Values.Sum();
