@@ -199,6 +199,7 @@ static async Task TestSettingsStoreCreatesDefaults()
 
     AssertTrue(File.Exists(paths.SettingsFile), "settings.json should be created.");
     AssertTrue(settings.ReminderEnabled, "Reminder should be enabled by default.");
+    AssertTrue(settings.LaunchAtStartup, "Launch at startup should be enabled by default.");
     AssertEqual("cat", settings.ReminderCharacter);
 }
 

@@ -10,7 +10,7 @@ public sealed class UserSettings
     public string ReminderCharacter { get; set; } = "cat";
     public int IdleThresholdSeconds { get; set; } = 60;
     public double OverlayOpacity { get; set; } = 0.35;
-    public bool LaunchAtStartup { get; set; }
+    public bool LaunchAtStartup { get; set; } = true;
     public bool MinimizeToTray { get; set; } = true;
     public bool TrayReminderAnimationEnabled { get; set; } = true;
     public string TrayReminderCpuDriver { get; set; } = "cpu_usage";
