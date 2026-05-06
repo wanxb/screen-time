@@ -13,12 +13,19 @@ namespace ScreenTime;
 public partial class SettingsWindow : Window
 {
     private readonly UserSettings _settings;
+    private readonly LiquidGlassBackdropService _liquidGlassBackdrop;
 
     public SettingsWindow(UserSettings settings)
     {
         InitializeComponent();
         _settings = settings;
-        SourceInitialized += (_, _) => ThemeService.ApplyWindowTitleBar(this, _settings.ThemeMode);
+        _liquidGlassBackdrop = new LiquidGlassBackdropService(this, LiquidGlassBackdrop);
+        SourceInitialized += (_, _) =>
+        {
+            ThemeService.ApplyWindowTitleBar(this, _settings.ThemeMode);
+            ApplyLiquidGlassBackdrop();
+        };
+        Closed += (_, _) => _liquidGlassBackdrop.Dispose();
         LoadSettings();
         ConfigureIntegerInput(ReminderIntervalBox);
         ConfigureIntegerInput(BreakDurationBox);
@@ -39,6 +46,7 @@ public partial class SettingsWindow : Window
         {
             "light" => 1,
             "dark" => 2,
+            "liquid_glass" => 3,
             _ => 0
         };
         ReminderIntervalBox.Text = _settings.ReminderIntervalMinutes.ToString();
@@ -50,6 +58,27 @@ public partial class SettingsWindow : Window
     private void OnCancelClick(object sender, RoutedEventArgs e)
     {
         Close();
+    }
+
+    private void OnTitleBarMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        DragMove();
+    }
+
+    private void OnMinimizeClick(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+    }
+
+    private void ApplyLiquidGlassBackdrop()
+    {
+        if (ThemeService.IsLiquidGlassMode(_settings.ThemeMode))
+        {
+            _liquidGlassBackdrop.Start();
+            return;
+        }
+
+        _liquidGlassBackdrop.Stop();
     }
 
     private void OnSaveClick(object sender, RoutedEventArgs e)

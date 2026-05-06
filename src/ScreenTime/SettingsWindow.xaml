@@ -11,7 +11,9 @@
         MaxWidth="900"
         ResizeMode="CanMinimize"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource PageBrush}">
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
     <Window.Resources>
         <Style TargetType="TextBox">
             <Setter Property="Height" Value="40" />
@@ -19,7 +21,7 @@
             <Setter Property="Padding" Value="12,8" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="Background" Value="{DynamicResource InputBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -112,13 +114,62 @@
         </Style>
     </Window.Resources>
 
-    <Grid Background="{DynamicResource PageBrush}" Margin="28">
+    <Border Background="{DynamicResource PageBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+    <Grid ClipToBounds="True">
+        <Image x:Name="LiquidGlassBackdrop"
+               Stretch="Fill"
+               Opacity="0.94"
+               IsHitTestVisible="False"
+               Visibility="Collapsed">
+            <Image.Effect>
+                <BlurEffect Radius="5" />
+            </Image.Effect>
+        </Image>
+
+    <Grid Margin="28,0,28,28">
         <Grid.RowDefinitions>
+            <RowDefinition Height="32" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border
+        <Grid Background="Transparent"
+              MouseLeftButtonDown="OnTitleBarMouseLeftButtonDown">
+            <StackPanel Orientation="Horizontal"
+                        VerticalAlignment="Center">
+                <Image Width="16"
+                       Height="16"
+                       Source="Assets/AppIcon.ico" />
+                <TextBlock Text="设置"
+                           Margin="7,0,0,0"
+                           FontSize="12"
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <Button Width="46"
+                        Height="30"
+                        MinHeight="30"
+                        Padding="0"
+                        BorderThickness="0"
+                        Background="Transparent"
+                        Content="—"
+                        Click="OnMinimizeClick" />
+                <Button Width="46"
+                        Height="30"
+                        MinHeight="30"
+                        Padding="0"
+                        BorderThickness="0"
+                        Background="Transparent"
+                        Content="×"
+                        Click="OnCancelClick" />
+            </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="1"
                 Padding="22"
                 Background="{DynamicResource SurfaceBrush}"
                 BorderBrush="{DynamicResource BorderBrush}"
@@ -202,6 +253,7 @@
                         <ComboBoxItem Content="跟随系统" Tag="system" />
                         <ComboBoxItem Content="浅色" Tag="light" />
                         <ComboBoxItem Content="深色" Tag="dark" />
+                        <ComboBoxItem Content="液态玻璃" Tag="liquid_glass" />
                     </ComboBox>
 
                     <!--
@@ -276,7 +328,7 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" Margin="0,16,0,0">
+        <Grid Grid.Row="2" Margin="0,16,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -304,4 +356,6 @@
             </StackPanel>
         </Grid>
     </Grid>
+    </Grid>
+    </Border>
 </Window>

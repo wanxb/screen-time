@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using ScreenTime.Core;
 
@@ -10,9 +11,21 @@ public static class ThemeService
 {
     private const int DwmwaUseImmersiveDarkMode = 20;
     private const int DwmwaUseImmersiveDarkModeBefore20H1 = 19;
+    private const int DwmwaSystemBackdropType = 38;
+    private const int DwmSystemBackdropNone = 1;
+    private const int DwmSystemBackdropTransientWindow = 3;
+    private const int WcaAccentPolicy = 19;
+    private const int AccentDisabled = 0;
+    private const int AccentEnableBlurBehind = 3;
 
     public static void Apply(string? themeMode)
     {
+        if (IsLiquidGlassMode(themeMode))
+        {
+            ApplyLiquidGlassResources();
+            return;
+        }
+
         var useDark = IsDarkMode(themeMode);
 
         var resources = System.Windows.Application.Current.Resources;
@@ -42,13 +55,24 @@ public static class ThemeService
             return;
         }
 
-        var enabled = IsDarkMode(themeMode) ? 1 : 0;
+        if (HwndSource.FromHwnd(handle) is { CompositionTarget: not null } source)
+        {
+            source.CompositionTarget.BackgroundColor = Colors.Transparent;
+        }
+
+        var enabled = IsDarkMode(themeMode) || IsLiquidGlassMode(themeMode) ? 1 : 0;
         var size = sizeof(int);
 
         if (NativeMethods.DwmSetWindowAttribute(handle, DwmwaUseImmersiveDarkMode, ref enabled, size) != 0)
         {
             NativeMethods.DwmSetWindowAttribute(handle, DwmwaUseImmersiveDarkModeBefore20H1, ref enabled, size);
         }
+
+        var isLiquidGlass = IsLiquidGlassMode(themeMode);
+        ApplyAcrylicComposition(handle, isLiquidGlass);
+
+        var backdropType = isLiquidGlass ? DwmSystemBackdropTransientWindow : DwmSystemBackdropNone;
+        NativeMethods.DwmSetWindowAttribute(handle, DwmwaSystemBackdropType, ref backdropType, size);
     }
 
     public static bool IsDarkMode(string? themeMode)
@@ -56,6 +80,11 @@ public static class ThemeService
         var mode = string.IsNullOrWhiteSpace(themeMode) ? "system" : themeMode;
         return mode.Equals("dark", StringComparison.OrdinalIgnoreCase)
             || (mode.Equals("system", StringComparison.OrdinalIgnoreCase) && IsSystemDarkMode());
+    }
+
+    public static bool IsLiquidGlassMode(string? themeMode)
+    {
+        return themeMode?.Equals("liquid_glass", StringComparison.OrdinalIgnoreCase) == true;
     }
 
     public static bool IsTrayDarkMode(string? themeMode)
@@ -84,6 +113,56 @@ public static class ThemeService
         catch
         {
             return fallback;
+        }
+    }
+
+    private static void ApplyLiquidGlassResources()
+    {
+        var resources = System.Windows.Application.Current.Resources;
+        resources["PageBrush"] = Brush("#00000000");
+        resources["SurfaceBrush"] = Brush("#14FFFFFF");
+        resources["SurfaceAltBrush"] = Brush("#22FFFFFF");
+        resources["BorderBrush"] = Brush("#A8FFFFFF");
+        resources["TextPrimaryBrush"] = Brush("#F7FBFF");
+        resources["TextSecondaryBrush"] = Brush("#D8E7F7");
+        resources["TextMutedBrush"] = Brush("#BED5E8");
+        resources["UsageProgressBrush"] = Brush("#D8F3FF");
+        resources["AccentBrush"] = Brush("#7BE7FF");
+        resources["AccentSoftBrush"] = Brush("#367BE7FF");
+        resources["AccentBorderBrush"] = Brush("#B8D8FAFF");
+        resources["DangerBrush"] = Brush("#FFB8C1");
+        resources["InputBrush"] = Brush("#10FFFFFF");
+        resources["InputBorderBrush"] = Brush("#B8FFFFFF");
+        resources["OverlayCardBrush"] = Brush("#18FFFFFF");
+        resources["ReminderCharacterBrush"] = Brush("#F7FBFF");
+    }
+
+    private static void ApplyAcrylicComposition(nint handle, bool enabled)
+    {
+        var accent = new NativeMethods.AccentPolicy
+        {
+            AccentState = enabled ? AccentEnableBlurBehind : AccentDisabled,
+            AccentFlags = enabled ? 2 : 0,
+            GradientColor = 0,
+            AnimationId = 0
+        };
+
+        var size = Marshal.SizeOf<NativeMethods.AccentPolicy>();
+        var accentPtr = Marshal.AllocHGlobal(size);
+        try
+        {
+            Marshal.StructureToPtr(accent, accentPtr, false);
+            var data = new NativeMethods.WindowCompositionAttributeData
+            {
+                Attribute = WcaAccentPolicy,
+                Data = accentPtr,
+                SizeOfData = size
+            };
+            NativeMethods.SetWindowCompositionAttribute(handle, ref data);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(accentPtr);
         }
     }
 

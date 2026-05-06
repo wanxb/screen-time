@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private UsageSnapshot? _lastSnapshot;
     private ChartData? _currentChartData;
     private readonly DispatcherTimer _barValueTimer;
+    private readonly LiquidGlassBackdropService _liquidGlassBackdrop;
     private DateTimeOffset _barValueVisibleUntil = DateTimeOffset.MinValue;
     private string _currentPeriodTotalText = "0 秒";
     private List<AppUsage> _currentApps = [];
@@ -42,12 +43,17 @@ public partial class MainWindow : Window
     {
         _startHidden = startHidden;
         InitializeComponent();
+        _liquidGlassBackdrop = new LiquidGlassBackdropService(this, LiquidGlassBackdrop);
         _barValueTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(5)
         };
         _barValueTimer.Tick += OnBarValueTimerTick;
-        SourceInitialized += (_, _) => ThemeService.ApplyWindowTitleBar(this, _bootstrapper.Settings.ThemeMode);
+        SourceInitialized += (_, _) =>
+        {
+            ThemeService.ApplyWindowTitleBar(this, _bootstrapper.Settings.ThemeMode);
+            ApplyLiquidGlassBackdrop();
+        };
         Loaded += OnLoaded;
         Closing += OnClosing;
     }
@@ -59,6 +65,7 @@ public partial class MainWindow : Window
             await _bootstrapper.InitializeAsync();
             ThemeService.Apply(_bootstrapper.Settings.ThemeMode);
             ThemeService.ApplyWindowTitleBar(this, _bootstrapper.Settings.ThemeMode);
+            ApplyLiquidGlassBackdrop();
             StartupService.Apply(_bootstrapper.Settings);
             _usageTimer = new UsageTimer(
                 _bootstrapper.Settings,
@@ -194,11 +201,43 @@ public partial class MainWindow : Window
             await _bootstrapper.SettingsStore.SaveAsync(_bootstrapper.Settings);
             ThemeService.Apply(_bootstrapper.Settings.ThemeMode);
             ThemeService.ApplyWindowTitleBar(this, _bootstrapper.Settings.ThemeMode);
+            ApplyLiquidGlassBackdrop();
             StartupService.Apply(_bootstrapper.Settings);
             _trayService?.ApplySettings(_bootstrapper.Settings);
             StatusText.Text = "设置已保存。";
         };
         _settingsWindow.Show();
+    }
+
+    private void OnTitleBarMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            ToggleWindowMaximize();
+            return;
+        }
+
+        DragMove();
+    }
+
+    private void OnMinimizeClick(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+    }
+
+    private void OnMaximizeClick(object sender, RoutedEventArgs e)
+    {
+        ToggleWindowMaximize();
+    }
+
+    private void OnCloseClick(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    private void ToggleWindowMaximize()
+    {
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     }
 
     private void OnReminderDue(object? sender, ReminderDueEventArgs e)
@@ -274,6 +313,7 @@ public partial class MainWindow : Window
         if (_usageTimer is null)
         {
             _trayService?.Dispose();
+            _liquidGlassBackdrop.Dispose();
             return;
         }
 
@@ -282,6 +322,18 @@ public partial class MainWindow : Window
         _reminderOverlayWindow?.ForceClose();
         _settingsWindow?.Close();
         _trayService?.Dispose();
+        _liquidGlassBackdrop.Dispose();
+    }
+
+    private void ApplyLiquidGlassBackdrop()
+    {
+        if (ThemeService.IsLiquidGlassMode(_bootstrapper.Settings.ThemeMode))
+        {
+            _liquidGlassBackdrop.Start();
+            return;
+        }
+
+        _liquidGlassBackdrop.Stop();
     }
 
     private static string FormatDuration(int totalSeconds)

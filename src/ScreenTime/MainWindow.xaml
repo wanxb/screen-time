@@ -11,7 +11,10 @@
         Width="1040"
         MinHeight="560"
         MinWidth="900"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
     <Window.Resources>
         <local:ChartSegmentHeightConverter x:Key="ChartSegmentHeightConverter" />
 
@@ -162,13 +165,71 @@
         </Style>
     </Window.Resources>
 
-    <Grid Background="{DynamicResource PageBrush}">
+    <Border Background="{DynamicResource PageBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+    <Grid ClipToBounds="True">
         <Grid.RowDefinitions>
+            <RowDefinition Height="32" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid Margin="28,20,28,12">
+        <Image x:Name="LiquidGlassBackdrop"
+               Grid.RowSpan="3"
+               Stretch="Fill"
+               Opacity="0.94"
+               IsHitTestVisible="False"
+               Visibility="Collapsed">
+            <Image.Effect>
+                <BlurEffect Radius="5" />
+            </Image.Effect>
+        </Image>
+
+        <Grid Background="Transparent"
+              MouseLeftButtonDown="OnTitleBarMouseLeftButtonDown">
+            <StackPanel Orientation="Horizontal"
+                        Margin="10,0,0,0"
+                        VerticalAlignment="Center">
+                <Image Width="16"
+                       Height="16"
+                       Source="Assets/AppIcon.ico" />
+                <TextBlock Text="屏幕时间"
+                           Margin="7,0,0,0"
+                           FontSize="12"
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <Button Width="46"
+                        Height="30"
+                        MinHeight="30"
+                        Padding="0"
+                        BorderThickness="0"
+                        Background="Transparent"
+                        Content="—"
+                        Click="OnMinimizeClick" />
+                <Button Width="46"
+                        Height="30"
+                        MinHeight="30"
+                        Padding="0"
+                        BorderThickness="0"
+                        Background="Transparent"
+                        Content="□"
+                        Click="OnMaximizeClick" />
+                <Button Width="46"
+                        Height="30"
+                        MinHeight="30"
+                        Padding="0"
+                        BorderThickness="0"
+                        Background="Transparent"
+                        Content="×"
+                        Click="OnCloseClick" />
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="28,20,28,12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
@@ -239,7 +300,7 @@
             </Border>
         </Grid>
 
-        <Grid Grid.Row="1" Margin="28,0,28,28">
+        <Grid Grid.Row="2" Margin="28,0,28,28">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1.25*" />
                 <ColumnDefinition Width="16" />
@@ -586,4 +647,5 @@
             </Border>
         </Grid>
     </Grid>
+    </Border>
 </Window>
