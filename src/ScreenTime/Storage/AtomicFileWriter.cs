@@ -10,9 +10,46 @@ public static class AtomicFileWriter
             Directory.CreateDirectory(directory);
         }
 
-        var tempPath = $"{path}.tmp";
-        await File.WriteAllTextAsync(tempPath, content, cancellationToken);
+        var tempPath = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, content, cancellationToken);
 
+            for (var attempt = 1; attempt <= 3; attempt++)
+            {
+                try
+                {
+                    ReplaceFile(tempPath, path);
+                    return;
+                }
+                catch (IOException) when (attempt < 3)
+                {
+                    await Task.Delay(75 * attempt, cancellationToken);
+                }
+                catch (UnauthorizedAccessException) when (attempt < 3)
+                {
+                    await Task.Delay(75 * attempt, cancellationToken);
+                }
+            }
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+            catch
+            {
+                // A stale temp file is less harmful than crashing during cleanup.
+            }
+        }
+    }
+
+    private static void ReplaceFile(string tempPath, string path)
+    {
         if (File.Exists(path))
         {
             try
@@ -23,7 +60,6 @@ public static class AtomicFileWriter
             {
                 File.Move(tempPath, path, overwrite: true);
             }
-
             return;
         }
 

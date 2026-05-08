@@ -34,6 +34,9 @@ public partial class MainWindow : Window
     private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Now);
     private readonly bool _startHidden;
     private bool _isExitRequested;
+    private bool _isClosingForExit;
+    private bool _isDashboardRendering;
+    private bool _isDashboardRenderPending;
 
     public MainWindow() : this(false)
     {
@@ -99,6 +102,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            AppLogger.Log(ex, "Main window initialization failed");
             StatusText.Text = $"初始化失败：{ex.Message}";
             StateText.Text = "错误";
         }
@@ -126,7 +130,7 @@ public partial class MainWindow : Window
             ? $" · 提醒延后：{suppressionReason}"
             : string.Empty;
         StatusText.Text = $"{FormatDuration((int)snapshot.IdleTime.TotalSeconds)}空闲 · {snapshot.TodayUsage.Apps.Count} 个软件 · {snapshot.UpdatedAt:HH:mm:ss}{reminderStatus}";
-        _ = RenderDashboardAsync();
+        _ = RenderDashboardSafelyAsync();
 
         _trayService?.UpdateSnapshot(snapshot);
         _reminderScheduler?.Observe(snapshot);
@@ -139,7 +143,7 @@ public partial class MainWindow : Window
         _selectedCategory = null;
         _dashboardMode = DashboardMode.Daily;
         _selectedDate = DateOnly.FromDateTime(DateTime.Now);
-        await RenderDashboardAsync();
+        await RenderDashboardSafelyAsync();
     }
 
     private async void OnWeeklyModeClick(object sender, RoutedEventArgs e)
@@ -149,7 +153,7 @@ public partial class MainWindow : Window
         _selectedCategory = null;
         _dashboardMode = DashboardMode.Weekly;
         _selectedDate = DateOnly.FromDateTime(DateTime.Now);
-        await RenderDashboardAsync();
+        await RenderDashboardSafelyAsync();
     }
 
     private async void OnPreviousPeriodClick(object sender, RoutedEventArgs e)
@@ -157,7 +161,7 @@ public partial class MainWindow : Window
         ClearBarValueDisplay();
         ClearAppDetail();
         _selectedDate = _dashboardMode == DashboardMode.Daily ? _selectedDate.AddDays(-1) : _selectedDate.AddDays(-7);
-        await RenderDashboardAsync();
+        await RenderDashboardSafelyAsync();
     }
 
     private async void OnNextPeriodClick(object sender, RoutedEventArgs e)
@@ -176,7 +180,7 @@ public partial class MainWindow : Window
             _selectedDate = today;
         }
 
-        await RenderDashboardAsync();
+        await RenderDashboardSafelyAsync();
     }
 
     private void OpenSettings()
@@ -198,13 +202,21 @@ public partial class MainWindow : Window
                 return;
             }
 
-            await _bootstrapper.SettingsStore.SaveAsync(_bootstrapper.Settings);
-            ThemeService.Apply(_bootstrapper.Settings.ThemeMode);
-            ThemeService.ApplyWindowTitleBar(this, _bootstrapper.Settings.ThemeMode);
-            ApplyLiquidGlassBackdrop();
-            StartupService.Apply(_bootstrapper.Settings);
-            _trayService?.ApplySettings(_bootstrapper.Settings);
-            StatusText.Text = "设置已保存。";
+            try
+            {
+                await _bootstrapper.SettingsStore.SaveAsync(_bootstrapper.Settings);
+                ThemeService.Apply(_bootstrapper.Settings.ThemeMode);
+                ThemeService.ApplyWindowTitleBar(this, _bootstrapper.Settings.ThemeMode);
+                ApplyLiquidGlassBackdrop();
+                StartupService.Apply(_bootstrapper.Settings);
+                _trayService?.ApplySettings(_bootstrapper.Settings);
+                StatusText.Text = "设置已保存。";
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log(ex, "Saving settings failed");
+                StatusText.Text = $"设置保存失败：{ex.Message}";
+            }
         };
         _settingsWindow.Show();
     }
@@ -253,7 +265,15 @@ public partial class MainWindow : Window
             var action = _reminderOverlayWindow.Action;
             _reminderOverlayWindow = null;
             _reminderScheduler?.MarkReminderClosed();
-            await _usageTimer.ResetContinuousAsync(action);
+            try
+            {
+                await _usageTimer.ResetContinuousAsync(action);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log(ex, "Resetting continuous usage after reminder failed");
+                StatusText.Text = $"休息记录保存失败：{ex.Message}";
+            }
         };
         _reminderOverlayWindow.Show();
     }
@@ -310,19 +330,35 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_usageTimer is null)
+        if (_isClosingForExit)
         {
-            _trayService?.Dispose();
-            _liquidGlassBackdrop.Dispose();
             return;
         }
 
-        await _usageTimer.StopAsync();
-        _usageTimer.Dispose();
-        _reminderOverlayWindow?.ForceClose();
-        _settingsWindow?.Close();
-        _trayService?.Dispose();
-        _liquidGlassBackdrop.Dispose();
+        e.Cancel = true;
+        _isClosingForExit = true;
+
+        try
+        {
+            if (_usageTimer is not null)
+            {
+                await _usageTimer.StopAsync();
+                _usageTimer.Dispose();
+            }
+
+            _reminderOverlayWindow?.ForceClose();
+            _settingsWindow?.Close();
+            _trayService?.Dispose();
+            _liquidGlassBackdrop.Dispose();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Log(ex, "Application shutdown cleanup failed");
+        }
+        finally
+        {
+            _ = Dispatcher.BeginInvoke(new Action(Close));
+        }
     }
 
     private void ApplyLiquidGlassBackdrop()
@@ -365,6 +401,39 @@ public partial class MainWindow : Window
     private static string FormatReminderCharacter(string reminderCharacter)
     {
         return reminderCharacter.Equals("dog", StringComparison.OrdinalIgnoreCase) ? "小狗" : "小猫";
+    }
+
+    private async Task RenderDashboardSafelyAsync()
+    {
+        if (_isDashboardRendering)
+        {
+            _isDashboardRenderPending = true;
+            return;
+        }
+
+        _isDashboardRendering = true;
+        try
+        {
+            do
+            {
+                _isDashboardRenderPending = false;
+                try
+                {
+                    await RenderDashboardAsync();
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Log(ex, "Rendering dashboard failed");
+                    StatusText.Text = $"看板刷新失败：{ex.Message}";
+                    return;
+                }
+            }
+            while (_isDashboardRenderPending);
+        }
+        finally
+        {
+            _isDashboardRendering = false;
+        }
     }
 
     private async Task RenderDashboardAsync()

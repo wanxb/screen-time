@@ -8,6 +8,7 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using ScreenTime.Models;
+using ScreenTime.Services;
 using DrawingColor = System.Drawing.Color;
 
 namespace ScreenTime;
@@ -54,11 +55,21 @@ public partial class ReminderOverlayWindow : Window
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        RenderCountdown();
-        _timer.Start();
-        ActivateOverlay();
-        _keyboardBlocker.Start(_settings.AllowCloseFullscreenReminder ? CloseFromKeyboard : null);
-        await InitializeWebViewAsync();
+        try
+        {
+            RenderCountdown();
+            _timer.Start();
+            ActivateOverlay();
+            _keyboardBlocker.Start(_settings.AllowCloseFullscreenReminder ? CloseFromKeyboard : null);
+            await InitializeWebViewAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Log(ex, "Reminder overlay initialization failed");
+            Action = "overlay_error";
+            _canClose = true;
+            Close();
+        }
     }
 
     private void ActivateOverlay()

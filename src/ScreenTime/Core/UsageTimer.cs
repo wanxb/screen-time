@@ -1,5 +1,6 @@
 ﻿using System.Windows.Threading;
 using ScreenTime.Models;
+using ScreenTime.Services;
 using ScreenTime.Storage;
 
 namespace ScreenTime.Core;
@@ -20,6 +21,7 @@ public sealed class UsageTimer : IDisposable
     private string _lastActiveAppId = string.Empty;
     private AppCategory _lastActiveCategory = AppCategory.Other;
     private bool _isPaused;
+    private bool _isTicking;
 
     public UsageTimer(
         UserSettings settings,
@@ -78,6 +80,28 @@ public sealed class UsageTimer : IDisposable
     }
 
     private async void OnTick(object? sender, EventArgs e)
+    {
+        if (_isTicking)
+        {
+            return;
+        }
+
+        _isTicking = true;
+        try
+        {
+            await TickAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Log(ex, "Usage timer tick failed");
+        }
+        finally
+        {
+            _isTicking = false;
+        }
+    }
+
+    private async Task TickAsync()
     {
         var idleTime = _idleDetector.GetIdleTime();
         var isActive = idleTime < TimeSpan.FromSeconds(_settings.IdleThresholdSeconds);
