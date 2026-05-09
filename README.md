@@ -14,6 +14,8 @@
 
 ![设置界面预览](src/ScreenTime/Assets/preview_1.png)
 
+![提醒界面预览](src/ScreenTime/Assets/preview_2.jpg)
+
 ## 功能
 
 - 统计今日和每周的软件使用时长
