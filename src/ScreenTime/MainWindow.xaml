@@ -210,29 +210,15 @@
             </StackPanel>
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Right">
-                <Button Width="46"
-                        Height="30"
-                        MinHeight="30"
-                        Padding="0"
-                        BorderThickness="0"
-                        Background="Transparent"
-                        Content="—"
+                <Button Style="{StaticResource CaptionButtonStyle}"
+                        Content="&#xE921;"
                         Click="OnMinimizeClick" />
-                <Button Width="46"
-                        Height="30"
-                        MinHeight="30"
-                        Padding="0"
-                        BorderThickness="0"
-                        Background="Transparent"
-                        Content="□"
+                <Button x:Name="MaximizeButton"
+                        Style="{StaticResource CaptionButtonStyle}"
+                        Content="&#xE922;"
                         Click="OnMaximizeClick" />
-                <Button Width="46"
-                        Height="30"
-                        MinHeight="30"
-                        Padding="0"
-                        BorderThickness="0"
-                        Background="Transparent"
-                        Content="×"
+                <Button Style="{StaticResource CaptionCloseButtonStyle}"
+                        Content="&#xE8BB;"
                         Click="OnCloseClick" />
             </StackPanel>
         </Grid>
@@ -304,6 +290,16 @@
                                TextWrapping="NoWrap"
                                TextTrimming="CharacterEllipsis"
                                Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <TextBlock x:Name="UpdateStatusText"
+                               Margin="0,3,0,0"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               TextWrapping="NoWrap"
+                               TextTrimming="CharacterEllipsis"
+                               Visibility="Collapsed"
+                               Cursor="Hand"
+                               MouseLeftButtonUp="OnUpdateStatusTextMouseLeftButtonUp"
+                               Foreground="{DynamicResource AccentBrush}" />
                 </StackPanel>
             </Border>
         </Grid>

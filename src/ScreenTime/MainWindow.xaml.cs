@@ -1,7 +1,9 @@
 ﻿using System.Globalization;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using ScreenTime.Core;
@@ -24,6 +26,7 @@ public partial class MainWindow : Window
     private ChartData? _currentChartData;
     private readonly DispatcherTimer _barValueTimer;
     private readonly LiquidGlassBackdropService _liquidGlassBackdrop;
+    private readonly UpdateCheckerService _updateChecker = new();
     private DateTimeOffset _barValueVisibleUntil = DateTimeOffset.MinValue;
     private string _currentPeriodTotalText = "0 秒";
     private List<AppUsage> _currentApps = [];
@@ -37,6 +40,7 @@ public partial class MainWindow : Window
     private bool _isClosingForExit;
     private bool _isDashboardRendering;
     private bool _isDashboardRenderPending;
+    private string? _updateDownloadUrl;
 
     public MainWindow() : this(false)
     {
@@ -52,6 +56,7 @@ public partial class MainWindow : Window
             Interval = TimeSpan.FromSeconds(5)
         };
         _barValueTimer.Tick += OnBarValueTimerTick;
+        StateChanged += (_, _) => UpdateMaximizeButtonIcon();
         SourceInitialized += (_, _) =>
         {
             ThemeService.ApplyWindowTitleBar(this, _bootstrapper.Settings.ThemeMode);
@@ -59,6 +64,7 @@ public partial class MainWindow : Window
         };
         Loaded += OnLoaded;
         Closing += OnClosing;
+        UpdateMaximizeButtonIcon();
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -84,7 +90,9 @@ public partial class MainWindow : Window
             _trayService.OpenBoardRequested += (_, _) => Dispatcher.Invoke(ShowMainWindow);
             _trayService.SettingsRequested += (_, _) => Dispatcher.Invoke(OpenSettings);
             _trayService.ExitRequested += (_, _) => Dispatcher.Invoke(ExitApplication);
+            _trayService.UpdateDownloadRequested += (_, _) => Dispatcher.Invoke(OpenUpdateDownloadUrl);
             _trayService.Start();
+            _ = CheckForUpdatesOnStartupAsync();
 
             RenderSnapshot(new UsageSnapshot
             {
@@ -129,11 +137,84 @@ public partial class MainWindow : Window
         var reminderStatus = ReminderSuppressionDetector.TryGetSuppressionReason(snapshot.CurrentApp, out var suppressionReason)
             ? $" · 提醒延后：{suppressionReason}"
             : string.Empty;
-        StatusText.Text = $"{FormatDuration((int)snapshot.IdleTime.TotalSeconds)}空闲 · {snapshot.TodayUsage.Apps.Count} 个软件 · {snapshot.UpdatedAt:HH:mm:ss}{reminderStatus}";
+        var status = $"{FormatDuration((int)snapshot.IdleTime.TotalSeconds)}空闲 · {snapshot.TodayUsage.Apps.Count} 个软件 · {snapshot.UpdatedAt:HH:mm:ss}{reminderStatus}";
+        StatusText.Text = status;
         _ = RenderDashboardSafelyAsync();
 
         _trayService?.UpdateSnapshot(snapshot);
         _reminderScheduler?.Observe(snapshot);
+    }
+
+    private async Task CheckForUpdatesOnStartupAsync()
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(15));
+
+            var result = await CheckForUpdatesWithRetryAsync();
+            if (!result.HasUpdate || string.IsNullOrWhiteSpace(result.UpdateUrl))
+            {
+                return;
+            }
+
+            _updateDownloadUrl = result.UpdateUrl;
+            UpdateStatusText.Text = $"发现新版本 {result.LatestTagName}，点击下载";
+            UpdateStatusText.Visibility = Visibility.Visible;
+
+            _trayService?.ShowUpdateAvailable(result.LatestTagName);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Log(ex, "Startup update check failed");
+        }
+    }
+
+    private async Task<UpdateCheckResult> CheckForUpdatesWithRetryAsync()
+    {
+        var retryDelays = new[]
+        {
+            TimeSpan.Zero,
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(15)
+        };
+        Exception? lastException = null;
+
+        foreach (var delay in retryDelays)
+        {
+            if (delay > TimeSpan.Zero)
+            {
+                await Task.Delay(delay);
+            }
+
+            try
+            {
+                return await _updateChecker.CheckLatestAsync();
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+            }
+        }
+
+        throw lastException ?? new InvalidOperationException("检查更新失败。");
+    }
+
+    private void OnUpdateStatusTextMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        OpenUpdateDownloadUrl();
+    }
+
+    private void OpenUpdateDownloadUrl()
+    {
+        if (string.IsNullOrWhiteSpace(_updateDownloadUrl))
+        {
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo(_updateDownloadUrl)
+        {
+            UseShellExecute = true
+        });
     }
 
     private async void OnDailyModeClick(object sender, RoutedEventArgs e)
@@ -250,6 +331,16 @@ public partial class MainWindow : Window
     private void ToggleWindowMaximize()
     {
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    }
+
+    private void UpdateMaximizeButtonIcon()
+    {
+        if (MaximizeButton is null)
+        {
+            return;
+        }
+
+        MaximizeButton.Content = WindowState == WindowState.Maximized ? "\uE923" : "\uE922";
     }
 
     private void OnReminderDue(object? sender, ReminderDueEventArgs e)

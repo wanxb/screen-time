@@ -32,6 +32,7 @@ public sealed class TrayService : IDisposable
         _notifyIcon.ContextMenuStrip.Items.Add("设置", null, (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty));
         _notifyIcon.ContextMenuStrip.Items.Add("退出", null, (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty));
         _notifyIcon.MouseClick += OnMouseClick;
+        _notifyIcon.BalloonTipClicked += OnBalloonTipClicked;
 
         _animator = new TrayReminderAnimator(_notifyIcon, settings.ReminderCharacter, ThemeService.IsTrayDarkMode(_themeMode), assetDirectory);
         ApplyTheme();
@@ -42,6 +43,7 @@ public sealed class TrayService : IDisposable
     public event EventHandler? OpenBoardRequested;
     public event EventHandler? SettingsRequested;
     public event EventHandler? ExitRequested;
+    public event EventHandler? UpdateDownloadRequested;
 
     public CpuUsageSnapshot CpuUsage => _metricsMonitor.Current;
 
@@ -100,12 +102,25 @@ public sealed class TrayService : IDisposable
         _notifyIcon.Text = text.Length > 63 ? text[..63] : text;
     }
 
+    public void ShowUpdateAvailable(string latestTagName)
+    {
+        _notifyIcon.BalloonTipTitle = "屏幕时间有新版本";
+        _notifyIcon.BalloonTipText = $"发现新版本 {latestTagName}，点击下载更新。";
+        _notifyIcon.BalloonTipIcon = WinForms.ToolTipIcon.Info;
+        _notifyIcon.ShowBalloonTip(10000);
+    }
+
     private void OnMouseClick(object? sender, WinForms.MouseEventArgs e)
     {
         if (e.Button == WinForms.MouseButtons.Left)
         {
             OpenBoardRequested?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    private void OnBalloonTipClicked(object? sender, EventArgs e)
+    {
+        UpdateDownloadRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnCpuUsageUpdated(object? sender, CpuUsageSnapshot snapshot)
@@ -173,6 +188,7 @@ public sealed class TrayService : IDisposable
         _isDisposed = true;
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
         _notifyIcon.MouseClick -= OnMouseClick;
+        _notifyIcon.BalloonTipClicked -= OnBalloonTipClicked;
         _metricsMonitor.CpuUsageUpdated -= OnCpuUsageUpdated;
         _metricsMonitor.Dispose();
         _animator.Dispose();

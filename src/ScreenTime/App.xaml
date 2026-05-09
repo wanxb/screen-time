@@ -21,10 +21,86 @@
         <SolidColorBrush x:Key="InputBorderBrush" Color="#D7D0C5" />
         <SolidColorBrush x:Key="OverlayCardBrush" Color="#F7F5F0" />
         <SolidColorBrush x:Key="ReminderCharacterBrush" Color="#222320" />
+        <SolidColorBrush x:Key="CaptionButtonHoverBrush" Color="#14000000" />
+        <SolidColorBrush x:Key="CaptionButtonPressedBrush" Color="#22000000" />
+        <SolidColorBrush x:Key="CaptionCloseHoverBrush" Color="#C42B1C" />
+        <SolidColorBrush x:Key="CaptionClosePressedBrush" Color="#A81F12" />
 
         <Style TargetType="Window">
             <Setter Property="FontFamily" Value="Microsoft YaHei UI, Segoe UI" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+
+        <Style x:Key="CaptionButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}">
+                            <TextBlock x:Name="Icon"
+                                       Text="{TemplateBinding Content}"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="10"
+                                       FontWeight="Normal"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       TextAlignment="Center"
+                                       SnapsToDevicePixels="True"
+                                       TextOptions.TextFormattingMode="Display" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource CaptionButtonHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource CaptionButtonPressedBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CaptionCloseButtonStyle" TargetType="Button" BasedOn="{StaticResource CaptionButtonStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}">
+                            <TextBlock x:Name="Icon"
+                                       Text="{TemplateBinding Content}"
+                                       FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="10"
+                                       FontWeight="Normal"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       TextAlignment="Center"
+                                       SnapsToDevicePixels="True"
+                                       TextOptions.TextFormattingMode="Display" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource CaptionCloseHoverBrush}" />
+                                <Setter TargetName="Icon" Property="Foreground" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource CaptionClosePressedBrush}" />
+                                <Setter TargetName="Icon" Property="Foreground" Value="White" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="TextBlock">

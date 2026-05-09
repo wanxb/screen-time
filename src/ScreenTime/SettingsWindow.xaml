@@ -189,21 +189,11 @@
             </StackPanel>
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Right">
-                <Button Width="46"
-                        Height="30"
-                        MinHeight="30"
-                        Padding="0"
-                        BorderThickness="0"
-                        Background="Transparent"
-                        Content="—"
+                <Button Style="{StaticResource CaptionButtonStyle}"
+                        Content="&#xE921;"
                         Click="OnMinimizeClick" />
-                <Button Width="46"
-                        Height="30"
-                        MinHeight="30"
-                        Padding="0"
-                        BorderThickness="0"
-                        Background="Transparent"
-                        Content="×"
+                <Button Style="{StaticResource CaptionCloseButtonStyle}"
+                        Content="&#xE8BB;"
                         Click="OnCancelClick" />
             </StackPanel>
         </Grid>

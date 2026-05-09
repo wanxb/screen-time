@@ -48,6 +48,10 @@ public static class ThemeService
         resources["InputBorderBrush"] = Brush(useDark ? "#4B5244" : "#D7D0C5");
         resources["OverlayCardBrush"] = Brush(useDark ? "#181A15" : "#F7F5F0");
         resources["ReminderCharacterBrush"] = Brush(useDark ? "#F2F2ED" : "#222320");
+        resources["CaptionButtonHoverBrush"] = Brush(useDark ? "#22FFFFFF" : "#14000000");
+        resources["CaptionButtonPressedBrush"] = Brush(useDark ? "#33FFFFFF" : "#22000000");
+        resources["CaptionCloseHoverBrush"] = Brush("#C42B1C");
+        resources["CaptionClosePressedBrush"] = Brush("#A81F12");
     }
 
     public static void ApplyWindowTitleBar(Window window, string? themeMode)
@@ -126,7 +130,7 @@ public static class ThemeService
         resources["SurfaceBrush"] = Brush("#14FFFFFF");
         resources["SurfaceAltBrush"] = Brush("#22FFFFFF");
         resources["DashboardGlassPanelBrush"] = Brush("#14FFFFFF");
-        resources["DashboardGlassPanelBorderBrush"] = Brush("#A8FFFFFF");
+        resources["DashboardGlassPanelBorderBrush"] = Brush("#00000000");
         resources["DashboardSectionBrush"] = Brush("#00000000");
         resources["BorderBrush"] = Brush("#A8FFFFFF");
         resources["TextPrimaryBrush"] = Brush("#F7FBFF");
@@ -141,6 +145,10 @@ public static class ThemeService
         resources["InputBorderBrush"] = Brush("#B8FFFFFF");
         resources["OverlayCardBrush"] = Brush("#18FFFFFF");
         resources["ReminderCharacterBrush"] = Brush("#F7FBFF");
+        resources["CaptionButtonHoverBrush"] = Brush("#26FFFFFF");
+        resources["CaptionButtonPressedBrush"] = Brush("#3AFFFFFF");
+        resources["CaptionCloseHoverBrush"] = Brush("#C42B1C");
+        resources["CaptionClosePressedBrush"] = Brush("#A81F12");
     }
 
     private static void ApplyAcrylicComposition(nint handle, bool enabled)
