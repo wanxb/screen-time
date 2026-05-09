@@ -4,7 +4,7 @@
 
 ## 下载
 
-[下载 Windows 版](https://github.com/wanxb/screen-time/releases/latest/download/ScreenTime-v0.1.4-win-x64.zip)
+[下载 Windows 版](https://github.com/wanxb/screen-time/releases/latest/download/ScreenTime-v0.1.5-win-x64.zip)
 
 下载压缩包后解压，运行 `ScreenTime.exe` 即可，不需要额外安装 .NET 运行环境。
 
@@ -14,7 +14,7 @@
 
 ![设置界面预览](src/ScreenTime/Assets/preview_1.png)
 
-![提醒界面预览](src/ScreenTime/Assets/preview_2.jpg)
+![提醒界面预览](src/ScreenTime/Assets/preview_2.png)
 
 ## 功能
 
@@ -29,6 +29,11 @@
 ## 隐私
 
 屏幕时间只记录软件名、进程名、可执行路径、活跃秒数、分类和提醒记录。不会记录键盘输入、截图录屏、聊天文档内容、浏览器 URL 或账号数据。
+
+## 鸣谢 / 灵感来源
+
+- 提醒方式 [Cat Gatekeeper](https://chromewebstore.google.com/detail/elbikiflgfhjdjmficnigpeegjbhdidh?utm_source=item-share-cb)
+- 托盘图标 [RunCat365](https://github.com/Kyome22/RunCat365)
 
 ## 开发
 

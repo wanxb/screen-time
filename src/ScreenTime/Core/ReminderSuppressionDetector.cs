@@ -19,7 +19,11 @@ public static class ReminderSuppressionDetector
         "potplayermini64",
         "bilibili",
         "douyin",
-        "iina"
+        "iina",
+        "wmplayer",
+        "quicktimeplayer",
+        "mpc-hc64",
+        "mpc-be64"
     ];
 
     private static readonly string[] BrowserProcesses =
@@ -47,6 +51,9 @@ public static class ReminderSuppressionDetector
         "腾讯视频",
         "douyin",
         "抖音",
+        "西瓜视频",
+        "芒果TV",
+        "视频",
         "video"
     ];
 
@@ -79,14 +86,24 @@ public static class ReminderSuppressionDetector
             return false;
         }
 
-        if (Matches(MediaProcesses, app.ProcessName)
-            || (Matches(BrowserProcesses, app.ProcessName) && ContainsAny(app.WindowTitle, MediaTitleKeywords)))
+        if (IsMediaPlaybackApp(app))
         {
             reason = "全屏视频中";
             return true;
         }
 
         return false;
+    }
+
+    public static bool IsMediaPlaybackApp(ForegroundAppInfo? app)
+    {
+        if (app is null)
+        {
+            return false;
+        }
+
+        return Matches(MediaProcesses, app.ProcessName)
+            || (Matches(BrowserProcesses, app.ProcessName) && ContainsAny(app.WindowTitle, MediaTitleKeywords));
     }
 
     private static bool Matches(IEnumerable<string> needles, string value)

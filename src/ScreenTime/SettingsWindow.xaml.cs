@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using System.Diagnostics;
 using System.Windows.Input;
 using ScreenTime.Models;
 using ScreenTime.Services;
@@ -14,6 +15,8 @@ public partial class SettingsWindow : Window
 {
     private readonly UserSettings _settings;
     private readonly LiquidGlassBackdropService _liquidGlassBackdrop;
+    private readonly UpdateCheckerService _updateChecker = new();
+    private string? _latestUpdateUrl;
 
     public SettingsWindow(UserSettings settings)
     {
@@ -36,6 +39,9 @@ public partial class SettingsWindow : Window
 
     private void LoadSettings()
     {
+        CurrentVersionText.Text = $"当前版本 v{UpdateCheckerService.CurrentVersion}";
+        UpdateStatusText.Text = string.Empty;
+        UpdateStatusText.Visibility = Visibility.Collapsed;
         ReminderEnabledBox.IsChecked = _settings.ReminderEnabled;
         AllowCloseBox.IsChecked = _settings.AllowCloseFullscreenReminder;
         MinimizeToTrayBox.IsChecked = _settings.MinimizeToTray;
@@ -53,6 +59,7 @@ public partial class SettingsWindow : Window
         BreakDurationBox.Text = _settings.BreakDurationMinutes.ToString();
         IdleThresholdBox.Text = _settings.IdleThresholdSeconds.ToString();
         OverlayOpacitySlider.Value = _settings.OverlayOpacity;
+        UpdateOverlayOpacityText();
     }
 
     private void OnCancelClick(object sender, RoutedEventArgs e)
@@ -68,6 +75,68 @@ public partial class SettingsWindow : Window
     private void OnMinimizeClick(object sender, RoutedEventArgs e)
     {
         WindowState = WindowState.Minimized;
+    }
+
+    private void OnOverlayOpacityChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateOverlayOpacityText();
+    }
+
+    private void UpdateOverlayOpacityText()
+    {
+        if (OverlayOpacityValueText is null)
+        {
+            return;
+        }
+
+        OverlayOpacityValueText.Text = $"{Math.Round(OverlayOpacitySlider.Value * 100):0}%";
+    }
+
+    private async void OnCheckUpdateClick(object sender, RoutedEventArgs e)
+    {
+        CheckUpdateButton.IsEnabled = false;
+        DownloadUpdateButton.Visibility = Visibility.Collapsed;
+        _latestUpdateUrl = null;
+        UpdateStatusText.Text = "正在检查更新...";
+        UpdateStatusText.Visibility = Visibility.Visible;
+
+        try
+        {
+            var result = await _updateChecker.CheckLatestAsync();
+            if (result.HasUpdate)
+            {
+                _latestUpdateUrl = result.UpdateUrl;
+                UpdateStatusText.Text = $"发现新版本 {result.LatestTagName}，当前版本 v{result.CurrentVersion}。";
+                DownloadUpdateButton.Visibility = string.IsNullOrWhiteSpace(_latestUpdateUrl)
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
+                return;
+            }
+
+            UpdateStatusText.Text = $"当前已是最新版本 v{result.CurrentVersion}。";
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Log(ex, "Failed to check for updates");
+            UpdateStatusText.Text = "检查更新失败，请稍后重试。";
+        }
+        finally
+        {
+            CheckUpdateButton.IsEnabled = true;
+        }
+    }
+
+    private void OnDownloadUpdateClick(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_latestUpdateUrl))
+        {
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo(_latestUpdateUrl)
+        {
+            UseShellExecute = true
+        });
     }
 
     private void ApplyLiquidGlassBackdrop()

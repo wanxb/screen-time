@@ -259,6 +259,18 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (ReminderSuppressionDetector.IsMediaPlaybackApp(e.CurrentApp))
+        {
+            try
+            {
+                MediaPlaybackService.SendPlayPause();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Log(ex, "Pausing media playback before reminder failed");
+            }
+        }
+
         _reminderOverlayWindow = new ReminderOverlayWindow(_bootstrapper.Settings);
         _reminderOverlayWindow.Closed += async (_, _) =>
         {

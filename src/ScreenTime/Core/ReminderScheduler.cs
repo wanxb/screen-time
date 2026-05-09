@@ -29,7 +29,7 @@ public sealed class ReminderScheduler
             && !ReminderSuppressionDetector.TryGetSuppressionReason(snapshot.CurrentApp, out _))
         {
             _isReminderOpen = true;
-            ReminderDue?.Invoke(this, new ReminderDueEventArgs(snapshot.TodayUsage, thresholdSeconds));
+            ReminderDue?.Invoke(this, new ReminderDueEventArgs(snapshot.TodayUsage, thresholdSeconds, snapshot.CurrentApp));
         }
     }
 

@@ -1,21 +1,28 @@
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
+using ScreenTime.Core;
 using ScreenTime.Models;
 using ScreenTime.Services;
 using DrawingColor = System.Drawing.Color;
+using Point = System.Windows.Point;
 
 namespace ScreenTime;
 
 public partial class ReminderOverlayWindow : Window
 {
     private const string AssetHostName = "screen-time-assets.local";
+    private const uint WdaNone = 0x00000000;
+    private const uint WdaExcludeFromCapture = 0x00000011;
+    private const double MaxBackdropBlurRadius = 34;
     private readonly UserSettings _settings;
     private readonly DispatcherTimer _timer;
     private readonly string? _assetDirectory;
@@ -60,6 +67,7 @@ public partial class ReminderOverlayWindow : Window
             RenderCountdown();
             _timer.Start();
             ActivateOverlay();
+            CaptureBlurredDesktopBackdrop();
             _keyboardBlocker.Start(_settings.AllowCloseFullscreenReminder ? CloseFromKeyboard : null);
             await InitializeWebViewAsync();
         }
@@ -132,7 +140,6 @@ public partial class ReminderOverlayWindow : Window
 
     private string BuildReminderHtml()
     {
-        var opacity = Math.Clamp(_settings.OverlayOpacity, 0, 0.9).ToString("0.###", CultureInfo.InvariantCulture);
         var closeDisplay = _settings.AllowCloseFullscreenReminder ? "grid" : "none";
         var entrySource = _entryVideoFile is null ? string.Empty : $"https://{AssetHostName}/{_entryVideoFile}";
         var idleSource = _idleVideoFile is null ? string.Empty : $"https://{AssetHostName}/{_idleVideoFile}";
@@ -148,7 +155,7 @@ public partial class ReminderOverlayWindow : Window
     * { box-sizing: border-box; }
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
     body { font-family: Consolas, "Microsoft YaHei UI", monospace; user-select: none; }
-    .stage { position: fixed; inset: 0; overflow: hidden; background: rgba(0, 0, 0, {{opacity}}); }
+    .stage { position: fixed; inset: 0; overflow: hidden; background: transparent; }
     video {
       position: absolute;
       inset: 0;
@@ -158,9 +165,14 @@ public partial class ReminderOverlayWindow : Window
       pointer-events: none;
       background: transparent;
       opacity: 0;
-      transition: opacity 80ms linear;
+      visibility: hidden;
+      display: none;
     }
-    video.active { opacity: 1; }
+    video.active {
+      opacity: 1;
+      visibility: visible;
+      display: block;
+    }
     #sprite {
       position: absolute;
       left: 50%;
@@ -216,7 +228,7 @@ public partial class ReminderOverlayWindow : Window
 </head>
 <body>
   <div class="stage">
-    <video id="entry" autoplay playsinline muted preload="auto" src="{{HtmlEncoder.Default.Encode(entrySource)}}"></video>
+    <video id="entry" playsinline muted preload="auto" src="{{HtmlEncoder.Default.Encode(entrySource)}}"></video>
     <video id="idle" playsinline muted preload="auto" src="{{HtmlEncoder.Default.Encode(idleSource)}}"></video>
     <img id="sprite" alt="" />
     <div class="timer">
@@ -238,6 +250,8 @@ public partial class ReminderOverlayWindow : Window
     window.setCountdown({{initialCountdown}});
 
     function show(video) {
+      if (video !== entry) entry.pause();
+      if (video !== idle) idle.pause();
       entry.classList.toggle('active', video === entry);
       idle.classList.toggle('active', video === idle);
       sprite.classList.toggle('active', video === sprite);
@@ -254,47 +268,119 @@ public partial class ReminderOverlayWindow : Window
       }, 120);
     }
 
-    idle.addEventListener('canplaythrough', () => {
-      if (!entry.src) {
-        if (idle.src) show(idle);
-        else playSprite();
-      }
-    }, { once: true });
+    function playVideo(video) {
+      show(video);
+      const promise = video.play();
+      if (promise) promise.catch(() => {});
+    }
 
-    entry.addEventListener('canplay', () => show(entry), { once: true });
-    entry.addEventListener('ended', () => {
+    function hasSource(video) {
+      return !!video.getAttribute('src');
+    }
+
+    function playIdle() {
+      if (!hasSource(idle)) {
+        playSprite();
+        return;
+      }
+
       idle.currentTime = 0;
-      const playIdle = () => {
-        show(idle);
-        idle.play();
-      };
-      if (idle.readyState >= 2) playIdle();
-      else idle.addEventListener('canplay', playIdle, { once: true });
+      if (idle.readyState >= 2) playVideo(idle);
+      else idle.addEventListener('canplay', () => playVideo(idle), { once: true });
+    }
+
+    entry.addEventListener('ended', () => {
+      playIdle();
     });
 
     entry.addEventListener('error', () => {
-      if (idle.src) {
-        idle.currentTime = 0;
-        show(idle);
-        idle.play();
-      } else {
-        playSprite();
-      }
+      playIdle();
     });
     idle.addEventListener('ended', () => {
       idle.currentTime = 0;
-      idle.play();
+      const promise = idle.play();
+      if (promise) promise.catch(() => {});
     });
 
     document.getElementById('close').addEventListener('click', () => {
       chrome.webview.postMessage('close');
     });
 
-    if (!entry.src && !idle.src) playSprite();
+    if (hasSource(entry)) {
+      if (entry.readyState >= 2) playVideo(entry);
+      else entry.addEventListener('canplay', () => playVideo(entry), { once: true });
+      entry.load();
+    } else if (hasSource(idle)) {
+      playIdle();
+    } else {
+      playSprite();
+    }
   </script>
 </body>
 </html>
 """;
+    }
+
+    private void CaptureBlurredDesktopBackdrop()
+    {
+        var blurStrength = Math.Clamp(_settings.OverlayOpacity, 0, 1);
+        BlurredDesktopEffect.Radius = blurStrength * MaxBackdropBlurRadius;
+
+        if (ActualWidth <= 1 || ActualHeight <= 1)
+        {
+            return;
+        }
+
+        var handle = new WindowInteropHelper(this).Handle;
+        var source = PresentationSource.FromVisual(this);
+        var transform = source?.CompositionTarget?.TransformToDevice ?? System.Windows.Media.Matrix.Identity;
+        var topLeft = PointToScreen(new Point(0, 0));
+        var width = Math.Max(1, (int)Math.Round(ActualWidth * transform.M11));
+        var height = Math.Max(1, (int)Math.Round(ActualHeight * transform.M22));
+
+        try
+        {
+            if (handle != 0)
+            {
+                NativeMethods.SetWindowDisplayAffinity(handle, WdaExcludeFromCapture);
+            }
+
+            using var bitmap = new Bitmap(width, height);
+            using (var graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.CopyFromScreen((int)Math.Round(topLeft.X), (int)Math.Round(topLeft.Y), 0, 0, bitmap.Size);
+            }
+
+            var hBitmap = bitmap.GetHbitmap();
+            try
+            {
+                var image = Imaging.CreateBitmapSourceFromHBitmap(
+                    hBitmap,
+                    nint.Zero,
+                    Int32Rect.Empty,
+                    BitmapSizeOptions.FromEmptyOptions());
+                image.Freeze();
+                BlurredDesktopBackdrop.Source = image;
+                BlurredDesktopBackdrop.Visibility = Visibility.Visible;
+            }
+            finally
+            {
+                NativeMethods.DeleteObject(hBitmap);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Log(ex, "Failed to capture blurred reminder backdrop");
+            BlurredDesktopBackdrop.Source = null;
+            BlurredDesktopBackdrop.Visibility = Visibility.Collapsed;
+        }
+        finally
+        {
+            if (handle != 0)
+            {
+                NativeMethods.SetWindowDisplayAffinity(handle, WdaNone);
+            }
+        }
     }
 
     private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -394,7 +480,14 @@ public partial class ReminderOverlayWindow : Window
         private const int WhKeyboardLl = 13;
         private const int WmKeyDown = 0x0100;
         private const int WmSysKeyDown = 0x0104;
+        private const int VkShift = 0x10;
+        private const int VkSnapshot = 0x2C;
         private const int VkEscape = 0x1B;
+        private const int VkLeftShift = 0xA0;
+        private const int VkRightShift = 0xA1;
+        private const int VkLeftWin = 0x5B;
+        private const int VkRightWin = 0x5C;
+        private const int VkS = 0x53;
         private readonly LowLevelKeyboardProc _proc;
         private nint _hook;
         private Action? _onEscape;
@@ -418,6 +511,11 @@ public partial class ReminderOverlayWindow : Window
             {
                 var message = wParam.ToInt32();
                 var virtualKey = Marshal.ReadInt32(lParam);
+                if (IsScreenshotShortcutKey(virtualKey))
+                {
+                    return CallNextHookEx(_hook, nCode, wParam, lParam);
+                }
+
                 if ((message == WmKeyDown || message == WmSysKeyDown) && virtualKey == VkEscape)
                 {
                     _onEscape?.Invoke();
@@ -427,6 +525,26 @@ public partial class ReminderOverlayWindow : Window
             }
 
             return CallNextHookEx(_hook, nCode, wParam, lParam);
+        }
+
+        private static bool IsScreenshotShortcutKey(int virtualKey)
+        {
+            if (virtualKey == VkSnapshot)
+            {
+                return true;
+            }
+
+            if (virtualKey is VkLeftWin or VkRightWin or VkShift or VkLeftShift or VkRightShift)
+            {
+                return true;
+            }
+
+            return virtualKey == VkS && IsKeyDown(VkShift) && (IsKeyDown(VkLeftWin) || IsKeyDown(VkRightWin));
+        }
+
+        private static bool IsKeyDown(int virtualKey)
+        {
+            return (GetAsyncKeyState(virtualKey) & 0x8000) != 0;
         }
 
         public void Dispose()
@@ -452,5 +570,8 @@ public partial class ReminderOverlayWindow : Window
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern nint GetModuleHandle(string? lpModuleName);
+
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int vKey);
     }
 }

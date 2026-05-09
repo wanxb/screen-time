@@ -14,6 +14,15 @@
         KeyDown="OnKeyDown">
     <Grid x:Name="RootOverlay"
           Background="#01000000">
+        <Image x:Name="BlurredDesktopBackdrop"
+               Stretch="Fill"
+               IsHitTestVisible="False"
+               Visibility="Collapsed">
+            <Image.Effect>
+                <BlurEffect x:Name="BlurredDesktopEffect"
+                            Radius="0" />
+            </Image.Effect>
+        </Image>
         <wv2:WebView2 x:Name="ReminderWebView"
                       HorizontalAlignment="Stretch"
                       VerticalAlignment="Stretch" />

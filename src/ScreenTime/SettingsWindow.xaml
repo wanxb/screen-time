@@ -18,13 +18,40 @@
         <Style TargetType="TextBox">
             <Setter Property="Height" Value="40" />
             <Setter Property="MinHeight" Value="40" />
-            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Padding" Value="12,0" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
             <Setter Property="Background" Value="{DynamicResource InputBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Chrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.56" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="ComboBox">
@@ -111,6 +138,18 @@
             <Setter Property="MinHeight" Value="30" />
             <Setter Property="Padding" Value="10,6" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        </Style>
+
+        <Style x:Key="UpdateTextButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Height" Value="22" />
+            <Setter Property="MinHeight" Value="22" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
         </Style>
     </Window.Resources>
 
@@ -264,17 +303,22 @@
                     </ComboBox>
                     -->
 
-                    <TextBlock Text="提醒遮罩透明度" Margin="0,18,0,8" FontWeight="SemiBold" />
+                    <TextBlock Text="背景模糊强度" Margin="0,18,0,8" FontWeight="SemiBold" />
                     <Slider x:Name="OverlayOpacitySlider"
-                            Minimum="0.2"
-                            Maximum="0.6"
+                            Minimum="0"
+                            Maximum="1"
                             TickFrequency="0.05"
-                            IsSnapToTickEnabled="True" />
+                            IsSnapToTickEnabled="True"
+                            ValueChanged="OnOverlayOpacityChanged" />
                     <Grid Margin="0,4,0,16">
-                        <TextBlock Text="柔和"
+                        <TextBlock Text="清晰"
                                    FontSize="12"
                                    Foreground="{DynamicResource TextMutedBrush}" />
-                        <TextBlock Text="明显"
+                        <TextBlock x:Name="OverlayOpacityValueText"
+                                   HorizontalAlignment="Center"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource TextMutedBrush}" />
+                        <TextBlock Text="最模糊"
                                    HorizontalAlignment="Right"
                                    FontSize="12"
                                    Foreground="{DynamicResource TextMutedBrush}" />
@@ -294,11 +338,11 @@
 
                     <TextBlock Text="隐私与数据" FontSize="18" FontWeight="SemiBold" />
                     <TextBlock Text="只统计软件级使用时长，数据保存在本机 AppData。"
-                               Margin="0,8,0,12"
+                               Margin="0,7,0,10"
                                TextWrapping="Wrap"
                                FontSize="13"
                                Foreground="{DynamicResource TextSecondaryBrush}" />
-                    <Border Padding="12"
+                    <Border Padding="10"
                             Background="{DynamicResource AccentSoftBrush}"
                             BorderBrush="{DynamicResource AccentBorderBrush}"
                             BorderThickness="1"
@@ -308,18 +352,18 @@
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource AccentBrush}" />
                             <TextBlock Text="软件名、进程名、可执行路径、活跃秒数、分类和提醒记录。"
-                                       Margin="0,6,0,12"
+                                       Margin="0,4,0,9"
                                        FontSize="12"
-                                       LineHeight="18"
+                                       LineHeight="16"
                                        TextWrapping="Wrap"
                                        Foreground="{DynamicResource TextSecondaryBrush}" />
                             <TextBlock Text="不会记录"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource AccentBrush}" />
                             <TextBlock Text="键盘内容、截图录屏、聊天文档内容、浏览器 URL 或云端账号数据。"
-                                       Margin="0,6,0,0"
+                                       Margin="0,4,0,0"
                                        FontSize="12"
-                                       LineHeight="18"
+                                       LineHeight="16"
                                        TextWrapping="Wrap"
                                        Foreground="{DynamicResource TextSecondaryBrush}" />
                         </StackPanel>
@@ -328,29 +372,61 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Row="2" Margin="0,16,0,0">
+        <Grid Grid.Row="2" Margin="0,8,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <TextBlock x:Name="ErrorText"
-                       VerticalAlignment="Center"
-                       Foreground="{DynamicResource DangerBrush}"
-                       TextWrapping="Wrap" />
+            <StackPanel Grid.Column="0"
+                        VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock x:Name="CurrentVersionText"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <Button x:Name="CheckUpdateButton"
+                            Margin="12,0,0,0"
+                            Style="{StaticResource UpdateTextButtonStyle}"
+                            Click="OnCheckUpdateClick">
+                        <TextBlock Text="检查更新" TextDecorations="Underline" />
+                    </Button>
+                    <Button x:Name="DownloadUpdateButton"
+                            Margin="8,0,0,0"
+                            Style="{StaticResource UpdateTextButtonStyle}"
+                            Click="OnDownloadUpdateClick"
+                            Visibility="Collapsed">
+                        <TextBlock Text="下载更新" TextDecorations="Underline" />
+                    </Button>
+                    <TextBlock x:Name="UpdateStatusText"
+                               Margin="10,0,0,0"
+                               VerticalAlignment="Center"
+                               FontSize="11"
+                               TextWrapping="NoWrap"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               Visibility="Collapsed" />
+                </StackPanel>
+
+                <TextBlock x:Name="ErrorText"
+                           Margin="0,2,0,0"
+                           Foreground="{DynamicResource DangerBrush}"
+                           TextWrapping="Wrap" />
+            </StackPanel>
 
             <StackPanel Grid.Column="1"
                         Orientation="Horizontal"
                         HorizontalAlignment="Right">
                 <Button Width="88"
-                        Height="36"
-                        MinHeight="36"
-                        Margin="0,0,10,0"
+                        Height="32"
+                        MinHeight="32"
+                        Margin="0,0,8,0"
                         Click="OnCancelClick"
                         Content="取消" />
                 <Button Width="88"
-                        Height="36"
-                        MinHeight="36"
+                        Height="32"
+                        MinHeight="32"
                         Click="OnSaveClick"
                         Content="保存" />
             </StackPanel>
