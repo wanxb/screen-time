@@ -5,6 +5,9 @@
         <SolidColorBrush x:Key="PageBrush" Color="#F7F5F0" />
         <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
         <SolidColorBrush x:Key="SurfaceAltBrush" Color="#F1EDE5" />
+        <SolidColorBrush x:Key="DashboardGlassPanelBrush" Color="#00000000" />
+        <SolidColorBrush x:Key="DashboardGlassPanelBorderBrush" Color="#00000000" />
+        <SolidColorBrush x:Key="DashboardSectionBrush" Color="#FFFFFF" />
         <SolidColorBrush x:Key="BorderBrush" Color="#E3DED5" />
         <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1D1B18" />
         <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5F5A52" />

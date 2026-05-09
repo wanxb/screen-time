@@ -32,6 +32,9 @@ public static class ThemeService
         resources["PageBrush"] = Brush(useDark ? "#11130F" : "#F7F5F0");
         resources["SurfaceBrush"] = Brush(useDark ? "#1B1E18" : "#FFFFFF");
         resources["SurfaceAltBrush"] = Brush(useDark ? "#24281F" : "#F1EDE5");
+        resources["DashboardGlassPanelBrush"] = Brush("#00000000");
+        resources["DashboardGlassPanelBorderBrush"] = Brush("#00000000");
+        resources["DashboardSectionBrush"] = Brush(useDark ? "#1B1E18" : "#FFFFFF");
         resources["BorderBrush"] = Brush(useDark ? "#3A4034" : "#E3DED5");
         resources["TextPrimaryBrush"] = Brush(useDark ? "#F5F1E8" : "#1D1B18");
         resources["TextSecondaryBrush"] = Brush(useDark ? "#C7C0B2" : "#5F5A52");
@@ -122,6 +125,9 @@ public static class ThemeService
         resources["PageBrush"] = Brush("#00000000");
         resources["SurfaceBrush"] = Brush("#14FFFFFF");
         resources["SurfaceAltBrush"] = Brush("#22FFFFFF");
+        resources["DashboardGlassPanelBrush"] = Brush("#14FFFFFF");
+        resources["DashboardGlassPanelBorderBrush"] = Brush("#A8FFFFFF");
+        resources["DashboardSectionBrush"] = Brush("#00000000");
         resources["BorderBrush"] = Brush("#A8FFFFFF");
         resources["TextPrimaryBrush"] = Brush("#F7FBFF");
         resources["TextSecondaryBrush"] = Brush("#D8E7F7");

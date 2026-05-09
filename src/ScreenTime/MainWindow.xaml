@@ -187,6 +187,14 @@
             </Image.Effect>
         </Image>
 
+        <Border Grid.RowSpan="3"
+                Margin="28,44,28,28"
+                Background="{DynamicResource DashboardGlassPanelBrush}"
+                BorderBrush="{DynamicResource DashboardGlassPanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                IsHitTestVisible="False" />
+
         <Grid Background="Transparent"
               MouseLeftButtonDown="OnTitleBarMouseLeftButtonDown">
             <StackPanel Orientation="Horizontal"
@@ -308,7 +316,7 @@
             </Grid.ColumnDefinitions>
 
             <Border Padding="18"
-                    Background="{DynamicResource SurfaceBrush}"
+                    Background="{DynamicResource DashboardSectionBrush}"
                     BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1"
                     CornerRadius="8">
@@ -561,7 +569,7 @@
 
             <Border Grid.Column="2"
                     Padding="14"
-                    Background="{DynamicResource SurfaceBrush}"
+                    Background="{DynamicResource DashboardSectionBrush}"
                     BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1"
                     CornerRadius="8">
@@ -580,7 +588,7 @@
                               BorderThickness="0"
                               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                               ScrollViewer.VerticalScrollBarVisibility="Hidden"
-                              Background="{DynamicResource SurfaceBrush}"
+                              Background="Transparent"
                               Foreground="{DynamicResource TextPrimaryBrush}">
                         <ListView.View>
                             <GridView>
