@@ -16,6 +16,8 @@
 
 ![提醒界面预览](src/ScreenTime/Assets/preview_2.png)
 
+![液态玻璃界面预览](src/ScreenTime/Assets/preview_3.png)
+
 ## 功能
 
 - 统计今日和每周的软件使用时长
