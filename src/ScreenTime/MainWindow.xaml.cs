@@ -551,7 +551,7 @@ public partial class MainWindow : Window
         if (_dashboardMode == DashboardMode.Daily)
         {
             var usage = IsToday(_selectedDate)
-                ? _bootstrapper.TodayUsage
+                ? _usageTimer!.TodayUsage
                 : await _bootstrapper.UsageStore.LoadExistingOrEmptyAsync(_selectedDate);
             RenderDailyDashboard(usage);
             return;
@@ -563,7 +563,7 @@ public partial class MainWindow : Window
         {
             var date = weekStart.AddDays(i);
             days.Add(IsToday(date)
-                ? _bootstrapper.TodayUsage
+                ? _usageTimer!.TodayUsage
                 : await _bootstrapper.UsageStore.LoadExistingOrEmptyAsync(date));
         }
 
@@ -662,7 +662,7 @@ public partial class MainWindow : Window
         {
             var date = weekStart.AddDays(i);
             var usage = IsToday(date)
-                ? _bootstrapper.TodayUsage
+                ? _usageTimer!.TodayUsage
                 : await _bootstrapper.UsageStore.LoadExistingOrEmptyAsync(date);
             foreach (var app in usage.Apps.Values)
             {

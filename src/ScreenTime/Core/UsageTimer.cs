@@ -8,7 +8,7 @@ namespace ScreenTime.Core;
 public sealed class UsageTimer : IDisposable
 {
     private readonly UserSettings _settings;
-    private readonly DailyUsage _todayUsage;
+    private DailyUsage _todayUsage;
     private readonly UsageStore _usageStore;
     private readonly AppCategoryClassifier _appCategoryClassifier;
     private readonly IdleDetector _idleDetector = new();
@@ -16,7 +16,7 @@ public sealed class UsageTimer : IDisposable
     private readonly DispatcherTimer _timer;
     private bool _isSaving;
     private bool _wasActive;
-    private DateTimeOffset _lastSavedAt = DateTimeOffset.MinValue;
+    private DateTimeOffset _nextSaveAt;
     private string _lastAppId = string.Empty;
     private string _lastActiveAppId = string.Empty;
     private AppCategory _lastActiveCategory = AppCategory.Other;
@@ -44,8 +44,11 @@ public sealed class UsageTimer : IDisposable
 
     public bool IsPaused => _isPaused;
 
+    public DailyUsage TodayUsage => _todayUsage;
+
     public void Start()
     {
+        _nextSaveAt = AlignToNextFiveMinute(DateTimeOffset.Now);
         _timer.Start();
     }
 
@@ -103,6 +106,20 @@ public sealed class UsageTimer : IDisposable
 
     private async Task TickAsync()
     {
+        var now = DateTimeOffset.Now;
+
+        // 跨天切换：保存昨天数据、加载今天数据
+        var today = DateOnly.FromDateTime(now.LocalDateTime);
+        if (today != _todayUsage.Date)
+        {
+            await SaveAsync();
+            _todayUsage = await _usageStore.LoadTodayAsync();
+            _lastAppId = string.Empty;
+            _lastActiveAppId = string.Empty;
+            _wasActive = false;
+            _nextSaveAt = AlignToNextFiveMinute(now);
+        }
+
         var idleTime = _idleDetector.GetIdleTime();
         var isActive = idleTime < TimeSpan.FromSeconds(_settings.IdleThresholdSeconds);
         var currentApp = isActive ? _foregroundAppTracker.GetCurrent() : null;
@@ -115,7 +132,6 @@ public sealed class UsageTimer : IDisposable
         }
         else if (isActive && currentApp is not null)
         {
-            var now = DateTimeOffset.Now;
             var appId = currentApp.AppId;
 
             if (!_todayUsage.Apps.TryGetValue(appId, out var usage))
@@ -142,7 +158,6 @@ public sealed class UsageTimer : IDisposable
             _todayUsage.ContinuousActiveSeconds++;
             AddHourlyCategorySecond(now.Hour, usage.Category);
 
-            shouldSave = !string.Equals(_lastAppId, appId, StringComparison.OrdinalIgnoreCase);
             _lastAppId = appId;
             _lastActiveAppId = appId;
             _lastActiveCategory = usage.Category;
@@ -150,13 +165,16 @@ public sealed class UsageTimer : IDisposable
         else if (_wasActive)
         {
             RewindIdleTail();
-            shouldSave = true;
             _lastAppId = string.Empty;
             _lastActiveAppId = string.Empty;
         }
 
         _wasActive = isActive;
-        shouldSave = shouldSave || DateTimeOffset.Now - _lastSavedAt >= TimeSpan.FromSeconds(30);
+        if (now >= _nextSaveAt)
+        {
+            shouldSave = true;
+            _nextSaveAt = AlignToNextFiveMinute(now);
+        }
 
         SnapshotUpdated?.Invoke(this, new UsageSnapshot
         {
@@ -261,12 +279,22 @@ public sealed class UsageTimer : IDisposable
         {
             _isSaving = true;
             await _usageStore.SaveAsync(_todayUsage);
-            _lastSavedAt = DateTimeOffset.Now;
         }
         finally
         {
             _isSaving = false;
         }
+    }
+
+    private static DateTimeOffset AlignToNextFiveMinute(DateTimeOffset now)
+    {
+        var minuteOfHour = now.Minute;
+        var next = (minuteOfHour / 5 + 1) * 5;
+        if (next >= 60)
+        {
+            return new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, 0, 0, now.Offset).AddHours(1);
+        }
+        return new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, next, 0, now.Offset);
     }
 
     public void Dispose()
