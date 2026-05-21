@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private readonly bool _startHidden;
     private bool _isExitRequested;
     private bool _isClosingForExit;
+    private bool _wasMinimized;
     private bool _isDashboardRendering;
     private bool _isDashboardRenderPending;
     private string? _updateDownloadUrl;
@@ -381,11 +382,34 @@ public partial class MainWindow : Window
         _reminderOverlayWindow.Show();
     }
 
-    private void ShowMainWindow()
+    private async void ShowMainWindow()
     {
+        if (IsVisible)
+        {
+            if (WindowState == WindowState.Minimized)
+            {
+                WindowState = WindowState.Normal;
+            }
+
+            Activate();
+            return;
+        }
+
+        var wasMinimized = _wasMinimized;
+        _wasMinimized = false;
+
         Show();
         WindowState = WindowState.Normal;
         Activate();
+
+        if (wasMinimized)
+        {
+            return;
+        }
+
+        _selectedDate = DateOnly.FromDateTime(DateTime.Now);
+        _dashboardMode = DashboardMode.Daily;
+        await RenderDashboardSafelyAsync();
     }
 
     private void TogglePause()
@@ -417,16 +441,19 @@ public partial class MainWindow : Window
     protected override void OnStateChanged(EventArgs e)
     {
         base.OnStateChanged(e);
-
-        if (WindowState == WindowState.Minimized && _bootstrapper.Settings.MinimizeToTray)
+        if (WindowState == WindowState.Minimized)
         {
-            Hide();
+            _wasMinimized = true;
+        }
+        else if (WindowState == WindowState.Normal)
+        {
+            _wasMinimized = false;
         }
     }
 
     private async void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        if (!_isExitRequested && _bootstrapper.Settings.MinimizeToTray)
+        if (!_isExitRequested)
         {
             e.Cancel = true;
             Hide();

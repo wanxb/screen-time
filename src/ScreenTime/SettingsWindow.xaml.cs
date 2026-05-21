@@ -44,7 +44,7 @@ public partial class SettingsWindow : Window
         UpdateStatusText.Visibility = Visibility.Collapsed;
         ReminderEnabledBox.IsChecked = _settings.ReminderEnabled;
         AllowCloseBox.IsChecked = _settings.AllowCloseFullscreenReminder;
-        MinimizeToTrayBox.IsChecked = _settings.MinimizeToTray;
+
         TrayAnimationBox.IsChecked = _settings.TrayReminderAnimationEnabled;
         LaunchAtStartupBox.IsChecked = _settings.LaunchAtStartup;
         // Reminder character selection is temporarily hidden in SettingsWindow.xaml.
@@ -174,7 +174,7 @@ public partial class SettingsWindow : Window
 
         _settings.ReminderEnabled = ReminderEnabledBox.IsChecked == true;
         _settings.AllowCloseFullscreenReminder = AllowCloseBox.IsChecked == true;
-        _settings.MinimizeToTray = MinimizeToTrayBox.IsChecked == true;
+
         _settings.TrayReminderAnimationEnabled = TrayAnimationBox.IsChecked == true;
         _settings.LaunchAtStartup = LaunchAtStartupBox.IsChecked == true;
         // Keep the existing reminder character while the setting is temporarily hidden.
